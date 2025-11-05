@@ -1,0 +1,14 @@
+package com.tns.newscrawler.dto.User;
+
+import lombok.Data;
+
+@Data
+public class UserDto {
+    private Long id;
+    private Long tenantId;
+    private String username;
+    private String fullName;
+    private String email;
+    private String role;
+    private Boolean isActive;
+}
