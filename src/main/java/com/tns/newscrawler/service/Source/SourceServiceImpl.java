@@ -136,21 +136,21 @@ public class SourceServiceImpl implements SourceService {
     }
 
     //bot crawler url
-    @Override
-    public String runbot(){
-        List<Source> sourceList = sourceRepository.findAll();
-        try{
-            for(Source s : sourceList){
-                Document document = Jsoup.connect(s.getBaseUrl()).get();
-                Element elements = document.select(s.getListUrl()).first();
-                HashSet<String> links = new HashSet<>();
-                for(Element element : elements){
-
-                }
-            }
-        }catch(Exception e){
-
-        }
-        return runbot();
-    }
+//    @Override
+//    public String runbot(){
+//        List<Source> sourceList = sourceRepository.findAll();
+//        try{
+//            for(Source s : sourceList){
+//                Document document = Jsoup.connect(s.getBaseUrl()).get();
+//                Element elements = document.select(s.getListUrl()).first();
+//                HashSet<String> links = new HashSet<>();
+//                for(Element element : elements){
+//
+//                }
+//            }
+//        }catch(Exception e){
+//
+//        }
+//        return runbot();
+//    }
 }
