@@ -25,4 +25,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     Page<Post> findByTenant_IdAndDeleteStatusAndStatusAndSource_IdAndTitleContainingIgnoreCase(
             Long tenantId, DeleteStatus ds, PostStatus st, Long sourceId, String keyword, Pageable pageable);
+    // Lấy danh sách post pending của 1 source (phục vụ content crawler)
+    Page<Post> findBySource_IdAndStatus(Long sourceId, Post.PostStatus status, Pageable pageable);
+
+    // Nếu muốn crawl toàn hệ thống:
+    Page<Post> findByStatus(Post.PostStatus status, Pageable pageable);
 }
