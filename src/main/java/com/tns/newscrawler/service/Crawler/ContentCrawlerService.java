@@ -159,9 +159,28 @@ public class ContentCrawlerService {
         if (StringUtils.hasText(source.getThumbnailSelector())) {
             Element img = doc.select(source.getThumbnailSelector()).first();
             if (img != null) {
-                String rawSrc = img.hasAttr("src") ? img.attr("src") : img.attr("data-src");
+                String rawSrc = null;
+
+                // Ưu tiên data-src (rất hay dùng cho lazy-load)
+                if (img.hasAttr("data-src")) {
+                    rawSrc = img.attr("data-src");
+                }
+                // fallback qua data-original (một số site dùng)
+                else if (img.hasAttr("data-original")) {
+                    rawSrc = img.attr("data-original");
+                }
+                // nếu không có thì dùng src bình thường
+                else if (img.hasAttr("src")) {
+                    rawSrc = img.attr("src");
+                }
+
+                // Chuẩn hoá lại thành absolute URL (https://...)
                 thumbnail = normalizeUrl(rawSrc, source.getBaseUrl());
             }
+        }
+
+        if (StringUtils.hasText(thumbnail)) {
+            post.setThumbnail(thumbnail);
         }
 
         // --- AUTHOR ---

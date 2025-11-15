@@ -5,8 +5,10 @@ import com.tns.newscrawler.dto.Post.PostDto;
 import com.tns.newscrawler.dto.Post.PostSearchRequest;
 import com.tns.newscrawler.dto.Post.PostUpdateRequest;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface PostService {
+    Page<PostDto> getAllPosts(Pageable pageable);
     PostDto getById(Long id);
     Page<PostDto> search(PostSearchRequest req);
 

@@ -18,4 +18,5 @@ public class SourceDto {
     private String authorSelector;
     private Boolean isActive;
     private String note;
+    private String categoryName;
 }

@@ -8,7 +8,12 @@ import java.util.List;
 
 public interface SourceRepository extends JpaRepository<Source, Long> {
 
-    List<Source> findByTenant_Id(Long tenantId);
+    @Query("select s from Source s " +
+            "left join fetch s.category c " +
+            "where s.tenant.id = :tenantId")
+    List<Source> findByTenantIdWithCategory(@org.springframework.data.repository.query.Param("tenantId") Long tenantId);
+
+//    List<Source> findByTenant_Id(Long tenantId);
 
     List<Source> findByTenant_IdAndIsActiveTrue(Long tenantId);
 

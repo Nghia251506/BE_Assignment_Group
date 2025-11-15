@@ -23,6 +23,8 @@ public class PostMapper {
         d.setViewCount(p.getViewCount());
         d.setCreatedAt(p.getCreatedAt());
         d.setUpdatedAt(p.getUpdatedAt());
+        d.setBaseUrl(p.getSource().getBaseUrl());
+        d.setCategoryName(p.getCategory().getName());
         return d;
     }
 }

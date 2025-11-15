@@ -22,6 +22,7 @@ public class SourceMapper {
         dto.setAuthorSelector(s.getAuthorSelector());
         dto.setIsActive(s.getIsActive());
         dto.setNote(s.getNote());
+        dto.setCategoryName(s.getCategory().getName());
         return dto;
     }
 }

@@ -1,6 +1,7 @@
 package com.tns.newscrawler.service.Post;
 
 import com.tns.newscrawler.dto.Post.*;
+import com.tns.newscrawler.dto.common.PageResponse;
 import com.tns.newscrawler.entity.*;
 import com.tns.newscrawler.entity.Post.DeleteStatus;
 import com.tns.newscrawler.entity.Post.PostStatus;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @Transactional
@@ -30,6 +32,35 @@ public class PostServiceImpl implements PostService {
         this.tenantRepo = tenantRepo;
         this.sourceRepo = sourceRepo;
         this.categoryRepo = categoryRepo;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PostDto> getAllPosts(Pageable pageable) {
+        Page<Post> page = postRepo.findAll(pageable);
+        // hoặc postRepository.findAll(pageable);
+
+        List<PostDto> content = page.getContent()
+                .stream()
+                .map(PostMapper::toDto)
+                .toList();
+
+        return new PageImpl<>(content, pageable, page.getTotalElements());
+    }
+
+    private PostDto toDto(Post p) {
+        PostDto dto = new PostDto();
+        dto.setId(p.getId());
+        dto.setTitle(p.getTitle());
+        dto.setSummary(p.getSummary());
+        dto.setStatus(String.valueOf(p.getStatus()));
+        dto.setDeleteStatus(String.valueOf(p.getDeleteStatus()));
+        dto.setPublishedAt(p.getPublishedAt());
+        dto.setViewCount(p.getViewCount());
+        // nếu PostDto có thêm trường sourceName, categoryName... thì set tiếp ở đây
+        // dto.setSourceName(p.getSource() != null ? p.getSource().getName() : null);
+        // dto.setCategoryName(p.getCategory() != null ? p.getCategory().getName() : null);
+        return dto;
     }
 
     @Override

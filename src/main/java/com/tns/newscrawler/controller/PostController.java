@@ -3,6 +3,9 @@ package com.tns.newscrawler.controller;
 import com.tns.newscrawler.dto.Post.*;
 import com.tns.newscrawler.service.Post.PostService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,6 +14,14 @@ public class PostController {
 
     private final PostService postService;
     public PostController(PostService postService) { this.postService = postService; }
+
+    @GetMapping("/api/admin/posts")
+    public Page<PostDto> getAllPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return postService.getAllPosts(pageable);
+    }
 
     // ==== ADMIN ====
     @GetMapping("/api/admin/posts/{id}")

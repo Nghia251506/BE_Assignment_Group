@@ -39,7 +39,7 @@ public class SourceServiceImpl implements SourceService {
 
     @Override
     public List<SourceDto> getByTenant(Long tenantId) {
-        return sourceRepository.findByTenant_Id(tenantId)
+        return sourceRepository.findByTenantIdWithCategory(tenantId)
                 .stream()
                 .map(SourceMapper::toDto)
                 .toList();
