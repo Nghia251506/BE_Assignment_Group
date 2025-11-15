@@ -8,12 +8,16 @@ import com.tns.newscrawler.entity.Post.PostStatus;
 import com.tns.newscrawler.mapper.Post.PostMapper;
 import com.tns.newscrawler.repository.*;
 import com.tns.newscrawler.service.Post.PostService;
+import org.jsoup.Jsoup;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @Transactional
@@ -100,6 +104,93 @@ public class PostServiceImpl implements PostService {
             sortObj = desc ? Sort.by(field).descending() : Sort.by(field).ascending();
         }
         return PageRequest.of(p, s, sortObj);
+    }
+
+    @Override
+    public PostDto generatePost(Long id) {
+
+        Post post = postRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found: " + id));
+
+        boolean changed = false;
+
+        // 1) Nếu chưa có content mà có contentRaw (HTML) thì convert sang text
+        if (!StringUtils.hasText(post.getContent()) && StringUtils.hasText(post.getContentRaw())) {
+            String text = Jsoup.parse(post.getContentRaw()).text();
+            post.setContent(text);
+            changed = true;
+        }
+
+        // 2) Tạo summary nếu chưa có
+        if (!StringUtils.hasText(post.getSummary()) && StringUtils.hasText(post.getContent())) {
+            String text = post.getContent();
+            if (text.length() > 300) {
+                post.setSummary(text.substring(0, 300) + "...");
+            } else {
+                post.setSummary(text);
+            }
+            changed = true;
+        }
+
+        // 3) Nếu chưa có title thì lấy từ summary
+        if (!StringUtils.hasText(post.getTitle()) && StringUtils.hasText(post.getSummary())) {
+            String s = post.getSummary();
+            if (s.length() > 80) {
+                post.setTitle(s.substring(0, 80) + "...");
+            } else {
+                post.setTitle(s);
+            }
+            changed = true;
+        }
+
+        // 4) Nếu chưa có slug thì tạo từ title
+        if (!StringUtils.hasText(post.getSlug()) && StringUtils.hasText(post.getTitle())) {
+            String slug = toSlug(post.getTitle());
+            post.setSlug(slug);
+            changed = true;
+        }
+
+        // 5) Status: nếu null hoặc còn pending thì đẩy về draft (tuỳ rule của anh)
+        if (post.getStatus() == null || post.getStatus() == Post.PostStatus.pending) {
+            post.setStatus(Post.PostStatus.draft);
+            changed = true;
+        }
+
+        if (changed) {
+            post.setUpdatedAt(LocalDateTime.now());
+        }
+
+        Post saved = postRepo.save(post);
+        return PostMapper.toDto(saved);
+    }
+
+    /**
+     * Convert text tiếng Việt → slug:
+     * "Tên lửa tái sử dụng Blue Origin lần đầu hạ cánh thành công"
+     * -> "ten-lua-tai-su-dung-blue-origin-lan-dau-ha-canh-thanh-cong"
+     */
+    private String toSlug(String input) {
+        if (input == null) return null;
+
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
+        // xoá dấu (accent)
+        String withoutDiacritics = normalized.replaceAll("\\p{M}", "");
+
+        // xử lý riêng cho đ / Đ
+        withoutDiacritics = withoutDiacritics
+                .replace("đ", "d")
+                .replace("Đ", "D");
+
+        // lowercase
+        String slug = withoutDiacritics.toLowerCase(Locale.ROOT);
+
+        // thay mọi thứ không phải a-z, 0-9 thành dấu gạch ngang
+        slug = slug.replaceAll("[^a-z0-9]+", "-");
+
+        // xoá bớt gạch ngang dư ở đầu / cuối
+        slug = slug.replaceAll("^-+|-+$", "");
+
+        return slug;
     }
 
     @Override

@@ -22,4 +22,5 @@ public interface PostService {
     // Crawler helpers
     boolean existsByOrigin(String originUrl);
     PostDto upsertByOrigin(PostCreateRequest req); // nếu tồn tại -> update fields mới
+    PostDto generatePost(Long id);
 }

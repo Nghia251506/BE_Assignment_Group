@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -35,10 +37,6 @@ public class User {
     @Column(length = 150)
     private String email;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private UserRole role = UserRole.EDITOR;
-
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
@@ -50,21 +48,29 @@ public class User {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_id")
+    private Role role;
+
+    // ================== PERMISSION ==================
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_permission",
+            joinColumns = @JoinColumn(name = "user_id"),               // FK tới users.id
+            inverseJoinColumns = @JoinColumn(name = "permission_id")   // FK tới permissions.id
+    )
+    private Set<Permission> permissions = new HashSet<>();
 
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         if (this.isActive == null) this.isActive = true;
-        if (this.role == null) this.role = UserRole.EDITOR;
+        if (this.role == null) this.role = role;
     }
 
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
-    }
-
-    public enum UserRole {
-        ADMIN, EDITOR, VIEWER
     }
 }

@@ -15,6 +15,12 @@ public class PostController {
     private final PostService postService;
     public PostController(PostService postService) { this.postService = postService; }
 
+    @PostMapping("/api/admin/{id}/generate")
+    public ResponseEntity<PostDto> generate(@PathVariable Long id) {
+        PostDto result = postService.generatePost(id);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/api/admin/posts")
     public Page<PostDto> getAllPosts(
             @RequestParam(defaultValue = "0") int page,

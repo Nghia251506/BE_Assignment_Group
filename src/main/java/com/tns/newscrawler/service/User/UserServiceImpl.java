@@ -3,104 +3,157 @@ package com.tns.newscrawler.service.User;
 import com.tns.newscrawler.dto.User.UserCreateRequest;
 import com.tns.newscrawler.dto.User.UserDto;
 import com.tns.newscrawler.dto.User.UserUpdateRequest;
+import com.tns.newscrawler.entity.Role;
 import com.tns.newscrawler.entity.Tenant;
 import com.tns.newscrawler.entity.User;
 import com.tns.newscrawler.mapper.User.UserMapper;
+import com.tns.newscrawler.repository.RoleRepository;
 import com.tns.newscrawler.repository.TenantRepository;
 import com.tns.newscrawler.repository.UserRepository;
-import com.tns.newscrawler.service.User.UserService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
-@Transactional
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepository;
-    private final TenantRepository tenantRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final UserRepository userRepo;
+    private final TenantRepository tenantRepo;
+    private final RoleRepository roleRepo;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserServiceImpl(UserRepository userRepository,
-                           TenantRepository tenantRepository) {
-        this.userRepository = userRepository;
-        this.tenantRepository = tenantRepository;
-    }
+    // ============== CÁC HÀM TRONG INTERFACE ==============
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserDto> getAll() {
-        return userRepository.findAll()
+        return userRepo.findAll()
                 .stream()
                 .map(UserMapper::toDto)
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserDto> getByTenant(Long tenantId) {
-        return userRepository.findByTenant_Id(tenantId)
-                .stream()
+        // giả sử anh có method này trong repo, nếu tên khác thì đổi lại
+        List<User> users = userRepo.findByTenant_Id(tenantId);
+        return users.stream()
                 .map(UserMapper::toDto)
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public UserDto getById(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        return UserMapper.toDto(user);
+        User u = userRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
+        return UserMapper.toDto(u);
     }
 
     @Override
+    @Transactional
     public UserDto create(UserCreateRequest req) {
-        // 1. check tenant
-        Tenant tenant = tenantRepository.findById(req.getTenantId())
-                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        User u = new User();
+        u.setUsername(req.getUsername());
 
-        // 2. check limit
-        long currentActiveUsers = userRepository.countByTenant_IdAndIsActiveTrue(tenant.getId());
-        if (currentActiveUsers >= tenant.getMaxUsers()) {
-            throw new RuntimeException("Tenant reached max users: " + tenant.getMaxUsers());
+        if (req.getPassword() != null && !req.getPassword().isBlank()) {
+            u.setPasswordHash(passwordEncoder.encode(req.getPassword()));
         }
 
-        // 3. check username
-        if (userRepository.existsByUsername(req.getUsername())) {
-            throw new RuntimeException("Username already exists");
+        if (req.getTenantId() != null) {
+            Tenant tenant = tenantRepo.findById(req.getTenantId())
+                    .orElseThrow(() -> new IllegalArgumentException("Tenant not found: " + req.getTenantId()));
+            u.setTenant(tenant);
         }
 
-        // 4. create entity
-        User user = User.builder()
-                .tenant(tenant)
-                .username(req.getUsername())
-                .passwordHash(passwordEncoder.encode(req.getPassword()))
-                .fullName(req.getFullName())
-                .email(req.getEmail())
-                .role(req.getRole() != null
-                        ? User.UserRole.valueOf(req.getRole())
-                        : User.UserRole.EDITOR)
-                .isActive(true)
-                .build();
+        if (req.getRole() != null) {
+            Role role = roleRepo.findByCode(req.getRole())
+                    .orElseThrow(() -> new IllegalArgumentException("Role not found: " + req.getRole()));
+            u.setRole(role); // ManyToOne → set trực tiếp
+        }
 
-        userRepository.save(user);
-        return UserMapper.toDto(user);
+        User saved = userRepo.save(u);
+        return UserMapper.toDto(saved);
     }
 
     @Override
+    @Transactional
     public UserDto update(Long id, UserUpdateRequest req) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User u = userRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
 
-        if (req.getFullName() != null) user.setFullName(req.getFullName());
-        if (req.getEmail() != null) user.setEmail(req.getEmail());
-        if (req.getRole() != null) user.setRole(User.UserRole.valueOf(req.getRole()));
-        if (req.getIsActive() != null) user.setIsActive(req.getIsActive());
+        if (req.getFullName() != null && !req.getFullName().isBlank()) {
+            u.setUsername(req.getFullName());
+        }
 
-        return UserMapper.toDto(user);
+        if (req.getPassword() != null && !req.getPassword().isBlank()) {
+            u.setPasswordHash(passwordEncoder.encode(req.getPassword()));
+        }
+
+        if (req.getRole() != null) {
+            Role role = roleRepo.findByCode(req.getRole())
+                    .orElseThrow(() -> new IllegalArgumentException("Role not found: " + req.getRole()));
+            u.setRole(role);
+        }
+
+        User saved = userRepo.save(u);
+        return UserMapper.toDto(saved);
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
-        userRepository.deleteById(id);
+        if (!userRepo.existsById(id)) {
+            throw new IllegalArgumentException("User not found: " + id);
+        }
+        userRepo.deleteById(id);
+    }
+
+    // ============== CÁC HÀM PHỤ TRỢ CHO SECURITY ==============
+
+    @Transactional(readOnly = true)
+    public UserDto getByUsername(String username) {
+        User u = userRepo.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
+        return UserMapper.toDto(u);
+    }
+
+    @Transactional(readOnly = true)
+    public User getDomainUserByUsername(String username) {
+        // hàm này nếu CustomUserDetailsService muốn dùng directly entity
+        return userRepo.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
+    }
+
+    @Transactional(readOnly = true)
+    public UserDto getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()
+                || "anonymousUser".equals(auth.getPrincipal())) {
+            return null;
+        }
+        String username = auth.getName();
+        return getByUsername(username);
+    }
+
+    @Transactional
+    public UserDto assignRoleToUser(Long userId, String roleCode) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        Role role = roleRepo.findByCode(roleCode)
+                .orElseThrow(() -> new IllegalArgumentException("Role not found: " + roleCode));
+
+        user.setRole(role);             // ✅ 1 user 1 role
+        User saved = userRepo.save(user);
+
+        return UserMapper.toDto(saved);
     }
 }
