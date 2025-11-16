@@ -39,6 +39,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // cho phép public mấy route client
                         .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/index.html/**",
+                                "/v3/api-docs/**",      // Đảm bảo API docs không yêu cầu login
+                                "/swagger-resources/**", // Tài nguyên Swagger UI
+                                "/webjars/**"           // Tài nguyên Swagger UI
+                        ).permitAll()
+                        .requestMatchers(
                                 "/",
                                 "/article/**",
                                 "/category/**",
@@ -51,7 +58,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
 
                         // admin
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").permitAll()
 
                         // còn lại phải login
                         .anyRequest().authenticated()
