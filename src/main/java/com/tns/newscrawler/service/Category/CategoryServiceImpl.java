@@ -36,6 +36,14 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    public List<CategoryDto> getBySlug(String slug) {
+        return categoryRepository.findBySlug(slug)
+                .stream()
+                .map(CategoryMapper::toDto)
+                .toList();
+    }
+
+    @Override
     public List<CategoryDto> getActiveByTenant(Long tenantId) {
         return categoryRepository.findByTenant_IdAndIsActiveTrue(tenantId)
                 .stream()
@@ -49,6 +57,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElseThrow(() -> new RuntimeException("Category not found"));
         return CategoryMapper.toDto(c);
     }
+
 
     @Override
     public CategoryDto create(CategoryCreateRequest req) {

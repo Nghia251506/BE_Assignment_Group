@@ -19,7 +19,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     boolean existsByOriginUrl(String originUrl);
     @EntityGraph(attributePaths = {"tenant", "source", "category"})
     Page<Post> findAll(Pageable pageable);
-
+    Optional<Post> findBySlug(String slug);
     // client list
     Page<Post> findByTenant_IdAndDeleteStatusAndStatusAndTitleContainingIgnoreCase(
             Long tenantId, DeleteStatus ds, PostStatus st, String keyword, Pageable pageable);

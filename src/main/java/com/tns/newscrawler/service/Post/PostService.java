@@ -9,7 +9,7 @@ import org.springframework.data.domain.Pageable;
 
 public interface PostService {
     Page<PostDto> getAllPosts(Pageable pageable);
-    PostDto getById(Long id);
+    PostDto getBySlug(String slug);
     Page<PostDto> search(PostSearchRequest req);
 
     PostDto create(PostCreateRequest req);         // admin/crawler upsert theo origin_url

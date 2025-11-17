@@ -25,6 +25,8 @@ public class Category {
 
     @Column(nullable = false, unique = false, length = 50)
     private String code;
+    @Column(name = "slug", length = 255)
+    private String slug;
 
     @Column(nullable = false, length = 255)
     private String name;

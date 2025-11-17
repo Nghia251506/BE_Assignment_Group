@@ -68,9 +68,18 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public PostDto getById(Long id) {
-        Post p = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
-        return PostMapper.toDto(p);
+    @Transactional(readOnly = true)
+    public PostDto getBySlug(String slug) {
+        // Tìm bài viết theo slug
+        Post p = postRepo.findBySlug(slug).orElseThrow(() -> new RuntimeException("Post not found"));
+
+        // Chuyển đổi từ Post sang PostDto
+        PostDto postDto = PostMapper.toDto(p);
+
+        // Thêm trường content vào PostDto
+        postDto.setContent(p.getContent());  // Giả sử Post có phương thức getContent() để lấy nội dung bài viết
+
+        return postDto;
     }
 
     @Override

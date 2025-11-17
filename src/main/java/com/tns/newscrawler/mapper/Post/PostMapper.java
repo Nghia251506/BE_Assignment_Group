@@ -25,6 +25,7 @@ public class PostMapper {
         d.setUpdatedAt(p.getUpdatedAt());
         d.setBaseUrl(p.getSource().getBaseUrl());
         d.setCategoryName(p.getCategory().getName());
+        d.setSourceName(p.getSource().getName());
         return d;
     }
 }

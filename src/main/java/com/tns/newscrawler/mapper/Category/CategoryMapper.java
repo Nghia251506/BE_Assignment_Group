@@ -14,6 +14,7 @@ public class CategoryMapper {
         dto.setName(c.getName());
         dto.setDescription(c.getDescription());
         dto.setIsActive(c.getIsActive());
+        dto.setSlug(c.getSlug());
         return dto;
     }
 }

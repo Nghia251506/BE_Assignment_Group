@@ -27,4 +27,5 @@ public class PostDto {
     private LocalDateTime updatedAt;
     private String baseUrl;
     private String categoryName;
+    private String sourceName;
 }

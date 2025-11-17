@@ -30,9 +30,9 @@ public class PostController {
     }
 
     // ==== ADMIN ====
-    @GetMapping("/api/admin/posts/{id}")
-    public ResponseEntity<PostDto> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(postService.getById(id));
+    @GetMapping("/api/admin/posts/{slug}")
+    public ResponseEntity<PostDto> getById(@PathVariable String slug) {
+        return ResponseEntity.ok(postService.getBySlug(slug));
     }
 
     @PostMapping("/api/admin/posts")

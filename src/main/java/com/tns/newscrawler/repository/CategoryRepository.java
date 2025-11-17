@@ -9,6 +9,7 @@ import java.util.Optional;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     List<Category> findByTenant_Id(Long tenantId);
+    List<Category> findBySlug(String slug);
 
     List<Category> findByTenant_IdAndIsActiveTrue(Long tenantId);
 

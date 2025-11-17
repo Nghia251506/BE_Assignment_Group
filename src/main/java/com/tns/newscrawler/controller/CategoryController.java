@@ -25,6 +25,11 @@ public class CategoryController {
         return ResponseEntity.ok(categoryService.getByTenant(tenantId));
     }
 
+    @GetMapping("/slug/{slug}")
+    public ResponseEntity<List<CategoryDto>> getBySlug(@PathVariable String slug) {
+        return ResponseEntity.ok(categoryService.getBySlug(slug));
+    }
+
     // list active cho FE user
     @GetMapping("/tenant/{tenantId}/active")
     public ResponseEntity<List<CategoryDto>> getActiveByTenant(@PathVariable Long tenantId) {
