@@ -10,6 +10,7 @@ public interface CategoryService {
 
     List<CategoryDto> getByTenant(Long tenantId);
     List<CategoryDto> getBySlug(String slug);
+    List<CategoryDto> getCategories();
 
     List<CategoryDto> getActiveByTenant(Long tenantId);
 

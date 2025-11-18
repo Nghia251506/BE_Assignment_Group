@@ -4,8 +4,10 @@ import com.tns.newscrawler.dto.User.UserDto;
 import com.tns.newscrawler.dto.Auth.LoginRequest;
 import com.tns.newscrawler.entity.User;
 import com.tns.newscrawler.mapper.User.UserMapper;
+import com.tns.newscrawler.security.JwtTokenProvider;
 import com.tns.newscrawler.service.User.UserServiceImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -21,22 +23,26 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final UserServiceImpl userService; // hoặc UserService nếu anh thêm method vào interface
+    private final JwtTokenProvider jwtTokenProvider;
 
     @PostMapping("/login")
-    public ResponseEntity<UserDto> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest) {
         try {
-            Authentication authToken =
-                    new UsernamePasswordAuthenticationToken(
-                            request.getUsername(), request.getPassword());
+            // Thực hiện xác thực người dùng
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
+            );
 
-            Authentication auth = authenticationManager.authenticate(authToken);
+            // Lưu thông tin người dùng vào SecurityContext
+            SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            SecurityContextHolder.getContext().setAuthentication(auth);
+            // Lấy thông tin người dùng từ database và tạo JWT token
+            String jwtToken = jwtTokenProvider.generateToken(loginRequest.getUsername());
 
-            User user = userService.getDomainUserByUsername(request.getUsername());
-            return ResponseEntity.ok(UserMapper.toDto(user));
-        } catch (BadCredentialsException ex) {
-            return ResponseEntity.status(401).build();
+            // Trả về JWT token cho người dùng
+            return ResponseEntity.ok(jwtToken);
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
         }
     }
 

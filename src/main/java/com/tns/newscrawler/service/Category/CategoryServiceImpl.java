@@ -12,6 +12,7 @@ import com.tns.newscrawler.service.Category.CategoryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -26,7 +27,11 @@ public class CategoryServiceImpl implements CategoryService {
         this.categoryRepository = categoryRepository;
         this.tenantRepository = tenantRepository;
     }
-
+    @Override
+    public List<CategoryDto> getCategories() {
+        return categoryRepository.findAll()
+                .stream().map(CategoryMapper::toDto).toList();
+    }
     @Override
     public List<CategoryDto> getByTenant(Long tenantId) {
         return categoryRepository.findByTenant_Id(tenantId)

@@ -1,5 +1,7 @@
 package com.tns.newscrawler.config;
 
+import com.tns.newscrawler.security.JwtAuthenticationFilter;
+import com.tns.newscrawler.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,12 +13,14 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
-
+    private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService customUserDetailsService;
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -31,63 +35,26 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//        http
-//                .csrf(AbstractHttpConfigurer::disable)
-//                .userDetailsService(customUserDetailsService)
-//                .authorizeHttpRequests(auth -> auth
-//                        // cho phép public mấy route client
-//                        .requestMatchers(
-//                                "/swagger-ui.html",
-//                                "/swagger-ui/index.html/**",
-//                                "/v3/api-docs/**",      // Đảm bảo API docs không yêu cầu login
-//                                "/swagger-resources/**", // Tài nguyên Swagger UI
-//                                "/webjars/**"           // Tài nguyên Swagger UI
-//                        ).permitAll()
-//                        .requestMatchers(
-//                                "/",
-//                                "/article/**",
-//                                "/category/**",
-//                                "/api/public/**",
-//                                "/api/admin/posts",
-//                                "/api/admin/categories/tenant/1"
-//                        ).permitAll()
-//
-//                        // cho phép login/logout
-//                        .requestMatchers("/api/auth/**").permitAll()
-//
-//                        // admin
-//                        .requestMatchers("/api/admin/**").permitAll()
-//
-//                        // còn lại phải login
-//                        .anyRequest().authenticated()
-//                )
-//                // Dùng formLogin hoặc httpBasic, tuỳ anh
-//                .httpBasic(basic -> {})  // → test Postman cho dễ
-//                .formLogin(form -> form
-//                        .loginPage("/login")       // nếu anh có trang login custom
-//                        .permitAll()
-//                )
-//                .logout(logout -> logout
-//                        .logoutUrl("/logout")
-//                        .permitAll()
-//                );
-//
-//        return http.build();
-//    }
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf().disable()  // Tắt CSRF protection
-                .authorizeRequests()
-                .requestMatchers("/**").permitAll()  // Thay thế antMatchers bằng requestMatchers
-                .anyRequest().permitAll()     // Bỏ qua tất cả các yêu cầu bảo mật
-                .and()
-                .formLogin().disable() // Nếu đang sử dụng formLogin thì tắt nó
-                .httpBasic().disable(); // Tắt HTTP Basic authentication
+                .csrf(AbstractHttpConfigurer::disable) // Tắt CSRF protection
+                .userDetailsService(customUserDetailsService) // Cấu hình dịch vụ người dùng tùy chỉnh
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**"
+                        ).permitAll() // Cho phép Swagger không cần xác thực
+                        .requestMatchers(
+                                "/", "/article/**", "/category/**", "/api/public/**"
+                        ).permitAll() // Các route client không yêu cầu login
+                        .requestMatchers("/api/auth/**").permitAll() // Cho phép các API auth không cần login
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // Admin routes yêu cầu quyền ADMIN
+                        .anyRequest().authenticated() // Các request còn lại yêu cầu login
+                )
 
+                .httpBasic(basic -> {}); // Sử dụng HTTP Basic Authentication (thường dùng trong Postman)
+
+        http.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }
