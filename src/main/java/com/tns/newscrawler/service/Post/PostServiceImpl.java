@@ -1,23 +1,22 @@
 package com.tns.newscrawler.service.Post;
 
 import com.tns.newscrawler.dto.Post.*;
-import com.tns.newscrawler.dto.common.PageResponse;
-import com.tns.newscrawler.entity.*;
+import com.tns.newscrawler.entity.Category;
+import com.tns.newscrawler.entity.Post;
 import com.tns.newscrawler.entity.Post.DeleteStatus;
 import com.tns.newscrawler.entity.Post.PostStatus;
+import com.tns.newscrawler.entity.Source;
+import com.tns.newscrawler.entity.Tenant;
 import com.tns.newscrawler.mapper.Post.PostMapper;
 import com.tns.newscrawler.repository.*;
-import com.tns.newscrawler.service.Post.PostService;
 import org.jsoup.Jsoup;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
 
 @Service
 @Transactional
@@ -38,99 +37,205 @@ public class PostServiceImpl implements PostService {
         this.categoryRepo = categoryRepo;
     }
 
+    // ==========================
+    // PUBLIC API (for client)
+    // ==========================
+
     @Override
     @Transactional(readOnly = true)
-    public Page<PostDto> getAllPosts(Pageable pageable) {
-        Page<Post> page = postRepo.findAll(pageable);
-        // hoặc postRepository.findAll(pageable);
+    public PostDetailDto getPostBySlug(Long tenantId, String slug) {
+        Post post = postRepo.findByTenant_IdAndSlugAndStatusAndDeleteStatus(
+                        tenantId, slug, PostStatus.published, DeleteStatus.Active)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        List<PostDto> content = page.getContent()
-                .stream()
-                .map(PostMapper::toDto)
-                .toList();
-
-        return new PageImpl<>(content, pageable, page.getTotalElements());
-    }
-
-    private PostDto toDto(Post p) {
-        PostDto dto = new PostDto();
-        dto.setId(p.getId());
-        dto.setTitle(p.getTitle());
-        dto.setSummary(p.getSummary());
-        dto.setStatus(String.valueOf(p.getStatus()));
-        dto.setDeleteStatus(String.valueOf(p.getDeleteStatus()));
-        dto.setPublishedAt(p.getPublishedAt());
-        dto.setViewCount(p.getViewCount());
-        // nếu PostDto có thêm trường sourceName, categoryName... thì set tiếp ở đây
-        // dto.setSourceName(p.getSource() != null ? p.getSource().getName() : null);
-        // dto.setCategoryName(p.getCategory() != null ? p.getCategory().getName() : null);
-        return dto;
+        return PostMapper.toDetailDto(post);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PostDto getBySlug(String slug) {
-        // Tìm bài viết theo slug
-        Post p = postRepo.findBySlug(slug).orElseThrow(() -> new RuntimeException("Post not found"));
+    public Page<PostDto> getLatestPosts(Long tenantId, Pageable pageable) {
+        Page<Post> page = postRepo.findByTenant_IdAndStatusAndDeleteStatusOrderByPublishedAtDesc(
+                tenantId, PostStatus.published, DeleteStatus.Active, pageable);
+        return page.map(PostMapper::toDto);
+    }
 
-        // Chuyển đổi từ Post sang PostDto
-        PostDto postDto = PostMapper.toDto(p);
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PostDto> searchPublic(Long tenantId, String keyword, Pageable pageable) {
+        return postRepo.searchFullText(keyword, tenantId, PostStatus.published.name(), DeleteStatus.Active.name(), pageable)
+                .map(PostMapper::toDto);
+    }
 
-        // Thêm trường content vào PostDto
-        postDto.setContent(p.getContent());  // Giả sử Post có phương thức getContent() để lấy nội dung bài viết
+    // ==========================
+    // ADMIN CRUD (for admin)
+    // ==========================
 
-        return postDto;
+    @Override
+    public PostDto unpublishPost(Long tenantId, Long currentUserId, Long id) {
+        Post post = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
+        post.setStatus(PostStatus.draft);  // hoặc chuyển sang PostStatus.removed tùy vào logic
+        post.setUpdatedAt(LocalDateTime.now());
+
+        Post savedPost = postRepo.save(post);
+        return PostMapper.toDto(savedPost);
     }
 
     @Override
     public Page<PostDto> search(PostSearchRequest req) {
-        var pageable = toPageable(req.getPage(), req.getSize(), req.getSort());
-        var status = req.getStatus()!=null ? PostStatus.valueOf(req.getStatus()) : PostStatus.published;
-        var keyword = req.getKeyword()!=null ? req.getKeyword().trim() : "";
-        if (req.getCategoryId()!=null) {
+        Pageable pageable = toPageable(req.getPage(), req.getSize(), req.getSort());
+        PostStatus status = req.getStatus() != null ? PostStatus.valueOf(req.getStatus()) : PostStatus.published;
+        String keyword = req.getKeyword() != null ? req.getKeyword().trim() : "";
+
+        if (req.getCategoryId() != null) {
             return postRepo.findByTenant_IdAndDeleteStatusAndStatusAndCategory_IdAndTitleContainingIgnoreCase(
-                    req.getTenantId(), DeleteStatus.Active, status, req.getCategoryId(), keyword, pageable
-            ).map(PostMapper::toDto);
-        } else if (req.getSourceId()!=null) {
+                            req.getTenantId(), DeleteStatus.Active, status, req.getCategoryId(), keyword, pageable)
+                    .map(PostMapper::toDto);
+        } else if (req.getSourceId() != null) {
             return postRepo.findByTenant_IdAndDeleteStatusAndStatusAndSource_IdAndTitleContainingIgnoreCase(
-                    req.getTenantId(), DeleteStatus.Active, status, req.getSourceId(), keyword, pageable
-            ).map(PostMapper::toDto);
+                            req.getTenantId(), DeleteStatus.Active, status, req.getSourceId(), keyword, pageable)
+                    .map(PostMapper::toDto);
         } else {
             return postRepo.findByTenant_IdAndDeleteStatusAndStatusAndTitleContainingIgnoreCase(
-                    req.getTenantId(), DeleteStatus.Active, status, keyword, pageable
-            ).map(PostMapper::toDto);
+                            req.getTenantId(), DeleteStatus.Active, status, keyword, pageable)
+                    .map(PostMapper::toDto);
         }
     }
 
-    private Pageable toPageable(Integer page, Integer size, String sort) {
-        int p = page!=null && page>=0 ? page : 0;
-        int s = size!=null && size>0 ? size : 10;
-        Sort sortObj = Sort.by("publishedAt").descending();
-        if (sort!=null && !sort.isBlank()) {
-            String[] parts = sort.split(",", 2);
-            String field = parts[0];
-            boolean desc = parts.length<2 || "DESC".equalsIgnoreCase(parts[1]);
-            sortObj = desc ? Sort.by(field).descending() : Sort.by(field).ascending();
+    @Override
+    public PostDto getById(Long id) {
+        Post post = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
+        return PostMapper.toDto(post);
+    }
+
+    @Override
+    public PostDto create(PostCreateRequest req) {
+        if (postRepo.existsByOriginUrl(req.getOriginUrl())) {
+            throw new RuntimeException("Post with origin already exists");
         }
-        return PageRequest.of(p, s, sortObj);
+
+        Tenant tenant = tenantRepo.findById(req.getTenantId())
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        Source source = req.getSourceId() != null
+                ? sourceRepo.findById(req.getSourceId()).orElse(null) : null;
+        Category category = req.getCategoryId() != null
+                ? categoryRepo.findById(req.getCategoryId()).orElse(null) : null;
+
+        Post post = Post.builder()
+                .tenant(tenant)
+                .source(source)
+                .category(category)
+                .originUrl(req.getOriginUrl())
+                .title(req.getTitle())
+                .slug(req.getSlug() != null ? req.getSlug() : slugify(req.getTitle()))
+                .summary(req.getSummary())
+                .content(req.getContent())
+                .contentRaw(req.getContentRaw())
+                .thumbnail(req.getThumbnail())
+                .status(PostStatus.pending)
+                .deleteStatus(DeleteStatus.Active)
+                .build();
+
+        postRepo.save(post);
+        return PostMapper.toDto(post);
+    }
+
+    @Override
+    public PostDto update(Long id, PostUpdateRequest req) {
+        Post post = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
+
+        if (req.getCategoryId() != null) {
+            Category category = categoryRepo.findById(req.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found"));
+            post.setCategory(category);
+        }
+
+        if (req.getTitle() != null) post.setTitle(req.getTitle());
+        if (req.getSlug() != null) post.setSlug(req.getSlug().isBlank() && req.getTitle() != null
+                ? slugify(req.getTitle()) : req.getSlug());
+        if (req.getSummary() != null) post.setSummary(req.getSummary());
+        if (req.getContent() != null) post.setContent(req.getContent());
+        if (req.getThumbnail() != null) post.setThumbnail(req.getThumbnail());
+        if (req.getStatus() != null) post.setStatus(PostStatus.valueOf(req.getStatus()));
+
+        Post savedPost = postRepo.save(post);
+        return PostMapper.toDto(savedPost);
+    }
+
+    @Override
+    public PostDto publishPost(Long tenantId, Long currentUserId, Long id) {
+        Post post = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
+        post.setStatus(PostStatus.published);
+        post.setPublishedAt(LocalDateTime.now());
+        post.setUpdatedAt(LocalDateTime.now());
+
+        Post savedPost = postRepo.save(post);
+        return PostMapper.toDto(savedPost);
+    }
+
+    @Override
+    public void softDeletePost(Long tenantId, Long currentUserId, Long id) {
+        Post post = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
+        post.setDeleteStatus(DeleteStatus.Deleted);
+        post.setDeletedAt(LocalDateTime.now());
+        post.setDeletedBy(currentUserId);
+
+        postRepo.save(post);
+    }
+
+    @Override
+    public void restorePost(Long tenantId, Long currentUserId, Long id) {
+        Post post = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
+        post.setDeleteStatus(DeleteStatus.Active);
+        post.setDeletedAt(null);
+        post.setDeletedBy(null);
+
+        postRepo.save(post);
+    }
+
+    // ==========================
+    // CRAWLER HELPERS
+    // ==========================
+
+    @Override
+    public boolean existsByOrigin(String originUrl) {
+        return postRepo.existsByOriginUrl(originUrl);
+    }
+
+    @Override
+    public PostDto upsertByOrigin(PostCreateRequest req) {
+        Post post = postRepo.findByOriginUrl(req.getOriginUrl()).orElse(null);
+
+        if (post == null) return create(req);
+
+        // Update fields (preserve published status)
+        if (req.getTitle() != null) post.setTitle(req.getTitle());
+        if (req.getSlug() != null) post.setSlug(req.getSlug());
+        if (req.getSummary() != null) post.setSummary(req.getSummary());
+        if (req.getContent() != null) post.setContent(req.getContent());
+        if (req.getContentRaw() != null) post.setContentRaw(req.getContentRaw());
+        if (req.getThumbnail() != null) post.setThumbnail(req.getThumbnail());
+        if (req.getCategoryId() != null) {
+            Category category = categoryRepo.findById(req.getCategoryId()).orElse(null);
+            post.setCategory(category);
+        }
+
+        Post savedPost = postRepo.save(post);
+        return PostMapper.toDto(savedPost);
     }
 
     @Override
     public PostDto generatePost(Long id) {
-
         Post post = postRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Post not found: " + id));
 
         boolean changed = false;
 
-        // 1) Nếu chưa có content mà có contentRaw (HTML) thì convert sang text
         if (!StringUtils.hasText(post.getContent()) && StringUtils.hasText(post.getContentRaw())) {
             String text = Jsoup.parse(post.getContentRaw()).text();
             post.setContent(text);
             changed = true;
         }
 
-        // 2) Tạo summary nếu chưa có
         if (!StringUtils.hasText(post.getSummary()) && StringUtils.hasText(post.getContent())) {
             String text = post.getContent();
             if (text.length() > 300) {
@@ -141,7 +246,6 @@ public class PostServiceImpl implements PostService {
             changed = true;
         }
 
-        // 3) Nếu chưa có title thì lấy từ summary
         if (!StringUtils.hasText(post.getTitle()) && StringUtils.hasText(post.getSummary())) {
             String s = post.getSummary();
             if (s.length() > 80) {
@@ -152,149 +256,20 @@ public class PostServiceImpl implements PostService {
             changed = true;
         }
 
-        // 4) Nếu chưa có slug thì tạo từ title
         if (!StringUtils.hasText(post.getSlug()) && StringUtils.hasText(post.getTitle())) {
-            String slug = toSlug(post.getTitle());
-            post.setSlug(slug);
+            post.setSlug(slugify(post.getTitle()));
             changed = true;
         }
 
-        // 5) Status: nếu null hoặc còn pending thì đẩy về draft (tuỳ rule của anh)
-        if (post.getStatus() == null || post.getStatus() == Post.PostStatus.pending) {
-            post.setStatus(Post.PostStatus.draft);
+        if (post.getStatus() == null || post.getStatus() == PostStatus.pending) {
+            post.setStatus(PostStatus.draft);
             changed = true;
         }
 
-        if (changed) {
-            post.setUpdatedAt(LocalDateTime.now());
-        }
+        if (changed) post.setUpdatedAt(LocalDateTime.now());
 
-        Post saved = postRepo.save(post);
-        return PostMapper.toDto(saved);
-    }
-
-    /**
-     * Convert text tiếng Việt → slug:
-     * "Tên lửa tái sử dụng Blue Origin lần đầu hạ cánh thành công"
-     * -> "ten-lua-tai-su-dung-blue-origin-lan-dau-ha-canh-thanh-cong"
-     */
-    private String toSlug(String input) {
-        if (input == null) return null;
-
-        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
-        // xoá dấu (accent)
-        String withoutDiacritics = normalized.replaceAll("\\p{M}", "");
-
-        // xử lý riêng cho đ / Đ
-        withoutDiacritics = withoutDiacritics
-                .replace("đ", "d")
-                .replace("Đ", "D");
-
-        // lowercase
-        String slug = withoutDiacritics.toLowerCase(Locale.ROOT);
-
-        // thay mọi thứ không phải a-z, 0-9 thành dấu gạch ngang
-        slug = slug.replaceAll("[^a-z0-9]+", "-");
-
-        // xoá bớt gạch ngang dư ở đầu / cuối
-        slug = slug.replaceAll("^-+|-+$", "");
-
-        return slug;
-    }
-
-    @Override
-    public PostDto create(PostCreateRequest req) {
-        if (postRepo.existsByOriginUrl(req.getOriginUrl()))
-            throw new RuntimeException("Post with origin already exists");
-
-        Tenant tenant = tenantRepo.findById(req.getTenantId())
-                .orElseThrow(() -> new RuntimeException("Tenant not found"));
-        Source source = req.getSourceId()!=null
-                ? sourceRepo.findById(req.getSourceId()).orElse(null) : null;
-        Category category = req.getCategoryId()!=null
-                ? categoryRepo.findById(req.getCategoryId()).orElse(null) : null;
-
-        Post p = Post.builder()
-                .tenant(tenant)
-                .source(source)
-                .category(category)
-                .originUrl(req.getOriginUrl())
-                .title(req.getTitle())
-                .slug(req.getSlug()!=null ? req.getSlug() : slugify(req.getTitle()))
-                .summary(req.getSummary())
-                .content(req.getContent())
-                .contentRaw(req.getContentRaw())
-                .thumbnail(req.getThumbnail())
-                .status(Post.PostStatus.pending)
-                .deleteStatus(Post.DeleteStatus.Active)
-                .build();
-        postRepo.save(p);
-        return PostMapper.toDto(p);
-    }
-
-    @Override
-    public PostDto update(Long id, PostUpdateRequest req) {
-        Post p = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
-        if (req.getCategoryId()!=null) {
-            Category c = categoryRepo.findById(req.getCategoryId())
-                    .orElseThrow(() -> new RuntimeException("Category not found"));
-            p.setCategory(c);
-        }
-        if (req.getTitle()!=null) p.setTitle(req.getTitle());
-        if (req.getSlug()!=null) p.setSlug(req.getSlug().isBlank() && req.getTitle()!=null
-                ? slugify(req.getTitle()) : req.getSlug());
-        if (req.getSummary()!=null) p.setSummary(req.getSummary());
-        if (req.getContent()!=null) p.setContent(req.getContent());
-        if (req.getThumbnail()!=null) p.setThumbnail(req.getThumbnail());
-        if (req.getStatus()!=null) p.setStatus(PostStatus.valueOf(req.getStatus()));
-        return PostMapper.toDto(p);
-    }
-
-    @Override
-    public PostDto publish(Long id) {
-        Post p = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
-        p.setStatus(PostStatus.published);
-        p.setPublishedAt(LocalDateTime.now());
-        return PostMapper.toDto(p);
-    }
-
-    @Override
-    public void softDelete(Long id, Long userId) {
-        Post p = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
-        p.setDeleteStatus(DeleteStatus.Deleted);
-        p.setDeletedAt(LocalDateTime.now());
-        p.setDeletedBy(userId);
-    }
-
-    @Override
-    public void restore(Long id) {
-        Post p = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
-        p.setDeleteStatus(DeleteStatus.Active);
-        p.setDeletedAt(null);
-        p.setDeletedBy(null);
-    }
-
-    @Override
-    public boolean existsByOrigin(String originUrl) {
-        return postRepo.existsByOriginUrl(originUrl);
-    }
-
-    @Override
-    public PostDto upsertByOrigin(PostCreateRequest req) {
-        Post p = postRepo.findByOriginUrl(req.getOriginUrl()).orElse(null);
-        if (p == null) return create(req);
-        // update nhẹ (giữ published nếu đã publish)
-        if (req.getTitle()!=null) p.setTitle(req.getTitle());
-        if (req.getSlug()!=null) p.setSlug(req.getSlug());
-        if (req.getSummary()!=null) p.setSummary(req.getSummary());
-        if (req.getContent()!=null) p.setContent(req.getContent());
-        if (req.getContentRaw()!=null) p.setContentRaw(req.getContentRaw());
-        if (req.getThumbnail()!=null) p.setThumbnail(req.getThumbnail());
-        if (req.getCategoryId()!=null) {
-            var c = categoryRepo.findById(req.getCategoryId()).orElse(null);
-            p.setCategory(c);
-        }
-        return PostMapper.toDto(p);
+        Post savedPost = postRepo.save(post);
+        return PostMapper.toDto(savedPost);
     }
 
     // util: slugify đơn giản
@@ -308,9 +283,22 @@ public class PostServiceImpl implements PostService {
                 .replaceAll("[úùủũụưứừửữự]", "u")
                 .replaceAll("[ýỳỷỹỵ]", "y")
                 .replaceAll("đ", "d")
-                .replaceAll("[^a-z0-9\\s-]", "")
+                .replaceAll("[^a-z09\\s-]", "")
                 .replaceAll("\\s+", "-")
                 .replaceAll("-{2,}", "-");
-        return s.length()>120 ? s.substring(0,120) : s;
+        return s.length() > 120 ? s.substring(0, 120) : s;
+    }
+
+    private Pageable toPageable(Integer page, Integer size, String sort) {
+        int p = page != null && page >= 0 ? page : 0;
+        int s = size != null && size > 0 ? size : 10;
+        Sort sortObj = Sort.by("publishedAt").descending();  // mặc định sắp xếp theo publishedAt DESC
+        if (sort != null && !sort.isBlank()) {
+            String[] parts = sort.split(",", 2);
+            String field = parts[0];
+            boolean desc = parts.length < 2 || "DESC".equalsIgnoreCase(parts[1]);
+            sortObj = desc ? Sort.by(field).descending() : Sort.by(field).ascending();
+        }
+        return PageRequest.of(p, s, sortObj);
     }
 }

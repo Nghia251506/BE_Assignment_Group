@@ -50,9 +50,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll() // Cho phép các API auth không cần login
                         .requestMatchers("/api/admin/**").permitAll() // Admin routes yêu cầu quyền ADMIN
                         .anyRequest().authenticated() // Các request còn lại yêu cầu login
-                )
+                );
 
-                .httpBasic(basic -> {}); // Sử dụng HTTP Basic Authentication (thường dùng trong Postman)
+//                .httpBasic(basic -> {}); // Sử dụng HTTP Basic Authentication (thường dùng trong Postman)
 
         http.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
         return http.build();

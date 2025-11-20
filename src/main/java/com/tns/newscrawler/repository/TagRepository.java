@@ -10,4 +10,7 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
     List<Tag> findByTenant_Id(Long tenantId);
     Optional<Tag> findByTenant_IdAndNameIgnoreCase(Long tenantId, String name);
     boolean existsByTenant_IdAndNameIgnoreCase(Long tenantId, String name);
+    List<Tag> findByTenantIdAndNameContainingIgnoreCase(Long tenantId, String keyword);
+
+    Optional<Tag> findByTenantIdAndSlug(Long tenantId, String slug);
 }

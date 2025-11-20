@@ -16,4 +16,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findByTenant_IdAndCode(Long tenantId, String code);
 
     boolean existsByTenant_IdAndCode(Long tenantId, String code);
+    List<Category> findByTenantIdAndIsActiveTrueOrderByNameAsc(Long tenantId);
+
+    Optional<Category> findByTenantIdAndSlugAndIsActiveTrue(Long tenantId, String slug);
 }

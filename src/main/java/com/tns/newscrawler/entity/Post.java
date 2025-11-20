@@ -38,8 +38,19 @@ public class Post {
     @Column(name="origin_url", nullable=false, length=500)
     private String originUrl;
 
+    @Column(name = "canonical_url", length = 500)
+    private String canonicalUrl;
+
     @Column(length=500) private String title;
     @Column(length=500) private String slug;
+    @Column(name = "seo_title", length = 500)
+    private String seoTitle;
+
+    @Column(name = "seo_description", length = 500)
+    private String seoDescription;
+
+    @Column(name = "seo_keywords", length = 500)
+    private String seoKeywords;
     @Column(columnDefinition="TEXT") private String summary;
 
     // lưu cả raw để sau “generate unique”

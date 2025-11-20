@@ -25,6 +25,15 @@ public class Tag {
     @Column(length = 120)
     private String slug;
 
+    @Column(name = "seo_title", length = 255)
+    private String seoTitle;
+
+    @Column(name = "seo_description", length = 500)
+    private String seoDescription;
+
+    @Column(name = "seo_keywords", length = 500)
+    private String seoKeywords;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

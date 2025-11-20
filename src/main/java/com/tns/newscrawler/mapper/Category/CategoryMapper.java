@@ -5,16 +5,40 @@ import com.tns.newscrawler.entity.Category;
 
 public class CategoryMapper {
 
-    public static CategoryDto toDto(Category c) {
-        if (c == null) return null;
+    public static CategoryDto toDto(Category entity) {
+        if (entity == null) return null;
         CategoryDto dto = new CategoryDto();
-        dto.setId(c.getId());
-        dto.setTenantId(c.getTenant() != null ? c.getTenant().getId() : null);
-        dto.setCode(c.getCode());
-        dto.setName(c.getName());
-        dto.setDescription(c.getDescription());
-        dto.setIsActive(c.getIsActive());
-        dto.setSlug(c.getSlug());
+        dto.setId(entity.getId());
+        dto.setTenantId(entity.getTenant().getId());
+        dto.setParentId(entity.getParentId());
+        dto.setCode(entity.getCode());
+        dto.setName(entity.getName());
+        dto.setDescription(entity.getDescription());
+        dto.setSlug(entity.getSlug());
+        dto.setSeoTitle(entity.getSeoTitle());
+        dto.setSeoDescription(entity.getSeoDescription());
+        dto.setSeoKeywords(entity.getSeoKeywords());
+        dto.setIsActive(entity.getIsActive());
         return dto;
+    }
+
+    public static void updateEntity(CategoryDto dto, Category entity) {
+        entity.setTenant(dto.getTenant());
+        entity.setParentId(dto.getParentId());
+        entity.setCode(dto.getCode());
+        entity.setName(dto.getName());
+        entity.setDescription(dto.getDescription());
+        entity.setSlug(dto.getSlug());
+        entity.setSeoTitle(dto.getSeoTitle());
+        entity.setSeoDescription(dto.getSeoDescription());
+        entity.setSeoKeywords(dto.getSeoKeywords());
+        entity.setIsActive(dto.getIsActive());
+    }
+
+    public static Category toEntity(CategoryDto dto) {
+        if (dto == null) return null;
+        Category entity = new Category();
+        updateEntity(dto, entity);
+        return entity;
     }
 }

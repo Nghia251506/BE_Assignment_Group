@@ -25,13 +25,22 @@ public class ClientController {
     }
 
     @GetMapping("/categories")
-    public ResponseEntity<List<CategoryDto>> getCategories() {
-        return ResponseEntity.ok(categoryService.getCategories());
+    public List<CategoryDto> getCategories(@RequestHeader("X-Tenant-Id") Long tenantId) {
+        return categoryService.getPublicCategories(tenantId);
     }
+
     @GetMapping("/categories/{slug}")
-    public ResponseEntity<List<CategoryDto>> getBySlug(@PathVariable String slug) {
-        return ResponseEntity.ok(categoryService.getBySlug(slug));
+    public CategoryDto getCategoryDetail(@RequestHeader("X-Tenant-Id") Long tenantId,
+                                         @PathVariable String slug) {
+        return categoryService.getCategoryBySlug(tenantId, slug);
     }
+
+//    @GetMapping("/{slug}/posts")
+//    public Page<PostSummaryDto> getCategoryPosts(@RequestHeader("X-Tenant-Id") Long tenantId,
+//                                                 @PathVariable String slug,
+//                                                 Pageable pageable) {
+//        return categoryService.getPostsByCategorySlug(tenantId, slug, pageable);
+//    }
 
     @GetMapping("/posts")
     public Page<PostDto> getAllPosts(

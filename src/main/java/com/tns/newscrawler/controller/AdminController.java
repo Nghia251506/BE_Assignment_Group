@@ -117,44 +117,49 @@ public class AdminController {
     }
 
     //post
-    @PostMapping("/{id}/generate")
-    public ResponseEntity<PostDto> generate(@PathVariable Long id) {
-        PostDto result = postService.generatePost(id);
-        return ResponseEntity.ok(result);
-    }
-
+    // Get all posts for admin with pagination
     @GetMapping("/posts")
-    public Page<PostDto> getAllPosts(
+    public ResponseEntity<Page<PostDto>> getAllPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return postService.getAllPosts(pageable);
+        Page<PostDto> posts = postService.getAllPosts(pageable);
+        return ResponseEntity.ok(posts);
     }
 
+    // Get post by slug for admin
     @GetMapping("/posts/{slug}")
-    public ResponseEntity<PostDto> getPostById(@PathVariable String slug) {
-        return ResponseEntity.ok(postService.getBySlug(slug));
+    public ResponseEntity<PostDto> getPostBySlug(@PathVariable String slug) {
+        PostDto postDto = postService.getBySlug(slug);
+        return ResponseEntity.ok(postDto);
     }
 
+    // Create new post
     @PostMapping("/posts")
     public ResponseEntity<PostDto> createPost(@RequestBody PostCreateRequest req) {
-        return ResponseEntity.ok(postService.create(req));
+        PostDto postDto = postService.create(req);
+        return ResponseEntity.ok(postDto);
     }
 
+    // Update post by id
     @PutMapping("/posts/{id}")
     public ResponseEntity<PostDto> updatePost(@PathVariable Long id, @RequestBody PostUpdateRequest req) {
-        return ResponseEntity.ok(postService.update(id, req));
+        PostDto postDto = postService.update(id, req);
+        return ResponseEntity.ok(postDto);
     }
 
+    // Publish post by id
     @PutMapping("/posts/{id}/publish")
-    public ResponseEntity<PostDto> publish(@PathVariable Long id) {
-        return ResponseEntity.ok(postService.publish(id));
+    public ResponseEntity<PostDto> publishPost(@PathVariable Long id) {
+        PostDto postDto = postService.publishPost(id);
+        return ResponseEntity.ok(postDto);
     }
 
+    // Soft delete post by id
     @DeleteMapping("/posts/{id}")
-    public ResponseEntity<Void> softDelete(@PathVariable Long id,
-                                           @RequestParam(required=false) Long userId) {
-        postService.softDelete(id, userId);
+    public ResponseEntity<Void> softDeletePost(Long tenantId,@PathVariable Long id, @RequestParam(required = false) Long userId) {
+
+        postService.softDeletePost(tenantId,id, userId);
         return ResponseEntity.noContent().build();
     }
 

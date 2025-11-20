@@ -17,11 +17,14 @@ public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    @Column(name = "tenant_id")
+    private Long tenantId;
     // multi-tenant
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id")
     private Tenant tenant;
+    @Column(name = "parent_id")
+    private Long parentId;
 
     @Column(nullable = false, unique = false, length = 50)
     private String code;
@@ -33,6 +36,14 @@ public class Category {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+    @Column(name = "seo_title", length = 255)
+    private String seoTitle;
+
+    @Column(name = "seo_description", length = 500)
+    private String seoDescription;
+
+    @Column(name = "seo_keywords", length = 500)
+    private String seoKeywords;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
