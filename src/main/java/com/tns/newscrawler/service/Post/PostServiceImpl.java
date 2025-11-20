@@ -68,6 +68,10 @@ public class PostServiceImpl implements PostService {
     public int getArticleCountByCategorySlug(String categorySlug) {
         return postRepo.countByCategorySlug(categorySlug);
     }
+    @Override
+    public int getArticleCountBySourceId(Long SourceId) {
+        return postRepo.countBySourceId(SourceId);
+    }
 
     @Override
     public Page<PostDto> search(PostSearchRequest req) {

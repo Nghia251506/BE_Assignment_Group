@@ -16,7 +16,7 @@ public interface PostService {
 
     Page<PostDto> search(PostSearchRequest req);
     int getArticleCountByCategorySlug(String categorySlug);
-
+    int getArticleCountBySourceId(Long SourceId);
     PostDto getById(Long id);
 
     PostDto create(PostCreateRequest req);

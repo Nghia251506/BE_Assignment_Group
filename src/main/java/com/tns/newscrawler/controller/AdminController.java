@@ -159,6 +159,10 @@ public class AdminController {
     public int getArticleCountByCategorySlug(@PathVariable String slug) {
         return postService.getArticleCountByCategorySlug(slug);
     }
+    @GetMapping("/sources/{id}/posts-count")
+    public int getArticleCountBySourceId(@PathVariable Long sourceId) {
+        return postService.getArticleCountBySourceId(sourceId);
+    }
 
     // Source
     @GetMapping("/sources")

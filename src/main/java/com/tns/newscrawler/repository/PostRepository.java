@@ -30,6 +30,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     @Query("SELECT COUNT(p) FROM Post p WHERE p.category.slug = :slug")
     int countByCategorySlug(String slug);
+    @Query("SELECT COUNT(p) FROM Post p WHERE p.source.id = :id")
+    int countBySourceId(Long id);
 
     // =====================
     // DETAIL / PUBLIC BY SLUG
