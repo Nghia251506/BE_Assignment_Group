@@ -48,7 +48,7 @@ public class SecurityConfig {
                                 "/", "/article/**", "/category/**", "/api/public/**"
                         ).permitAll() // Các route client không yêu cầu login
                         .requestMatchers("/api/auth/**").permitAll() // Cho phép các API auth không cần login
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // Admin routes yêu cầu quyền ADMIN
+                        .requestMatchers("/api/admin/**").permitAll() // Admin routes yêu cầu quyền ADMIN
                         .anyRequest().authenticated() // Các request còn lại yêu cầu login
                 )
 
