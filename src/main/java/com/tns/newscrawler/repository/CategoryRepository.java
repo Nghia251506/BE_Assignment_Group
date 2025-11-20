@@ -8,15 +8,15 @@ import java.util.Optional;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
-    List<Category> findByTenant_Id(Long tenantId);
     List<Category> findBySlug(String slug);
 
-    List<Category> findByTenant_IdAndIsActiveTrue(Long tenantId);
+    List<Category> findByIsActiveTrue();
 
-    Optional<Category> findByTenant_IdAndCode(Long tenantId, String code);
+    Optional<Category> findByCode(String code);
 
-    boolean existsByTenant_IdAndCode(Long tenantId, String code);
-    List<Category> findByTenantIdAndIsActiveTrueOrderByNameAsc(Long tenantId);
+    boolean existsByCode(String code);
 
-    Optional<Category> findByTenantIdAndSlugAndIsActiveTrue(Long tenantId, String slug);
+    List<Category> findByIsActiveTrueOrderByNameAsc();
+
+    Optional<Category> findBySlugAndIsActiveTrue(String slug);
 }

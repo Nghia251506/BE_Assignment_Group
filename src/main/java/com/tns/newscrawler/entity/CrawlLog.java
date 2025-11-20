@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "crawl_logs",
         indexes = {
-                @Index(name = "idx_crawl_logs_tenant", columnList = "tenant_id"),
                 @Index(name = "idx_crawl_logs_source", columnList = "source_id"),
                 @Index(name = "idx_crawl_logs_status", columnList = "status"),
                 @Index(name = "idx_crawl_logs_started", columnList = "started_at")
@@ -21,11 +20,7 @@ public class CrawlLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // quan hệ
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
-
+    // Liên kết với Source
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_id")
     private Source source;

@@ -9,7 +9,6 @@ public class CategoryMapper {
         if (entity == null) return null;
         CategoryDto dto = new CategoryDto();
         dto.setId(entity.getId());
-        dto.setTenantId(entity.getTenant().getId());
         dto.setParentId(entity.getParentId());
         dto.setCode(entity.getCode());
         dto.setName(entity.getName());
@@ -23,7 +22,6 @@ public class CategoryMapper {
     }
 
     public static void updateEntity(CategoryDto dto, Category entity) {
-        entity.setTenant(dto.getTenant());
         entity.setParentId(dto.getParentId());
         entity.setCode(dto.getCode());
         entity.setName(dto.getName());

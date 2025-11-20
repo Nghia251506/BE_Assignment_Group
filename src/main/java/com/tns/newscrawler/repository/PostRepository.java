@@ -17,43 +17,29 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // =====================
     // ORIGIN URL (crawler)
     // =====================
-
     Optional<Post> findByOriginUrl(String originUrl);
 
     boolean existsByOriginUrl(String originUrl);
 
-
     // =====================
-    // ADMIN: list full (kèm tenant/source/category)
+    // ADMIN: list full (kèm source/category)
     // =====================
-
-    @EntityGraph(attributePaths = {"tenant", "source", "category"})
+    @Query("SELECT p FROM Post p ORDER BY p.id DESC ")
+//    @EntityGraph(attributePaths = {"source", "category"})
     Page<Post> findAll(Pageable pageable);
 
+    @Query("SELECT COUNT(p) FROM Post p WHERE p.category.slug = :slug")
+    int countByCategorySlug(String slug);
 
     // =====================
     // DETAIL / PUBLIC BY SLUG
     // =====================
-
-    // (ít dùng, vì multi-tenant, để lại cho admin/search nội bộ nếu cần)
     Optional<Post> findBySlug(String slug);
-
-    // Public detail: 1 tenant + 1 slug + đã publish + chưa delete
-    Optional<Post> findByTenant_IdAndSlugAndStatusAndDeleteStatus(
-            Long tenantId,
-            String slug,
-            PostStatus status,
-            DeleteStatus deleteStatus
-    );
-
 
     // =====================
     // CLIENT LIST / ADMIN LIST (theo title)
     // =====================
-
-    // List theo tenant + status + deleteStatus + keyword title
-    Page<Post> findByTenant_IdAndDeleteStatusAndStatusAndTitleContainingIgnoreCase(
-            Long tenantId,
+    Page<Post> findByDeleteStatusAndStatusAndTitleContainingIgnoreCase(
             DeleteStatus deleteStatus,
             PostStatus status,
             String keyword,
@@ -61,8 +47,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     );
 
     // Filter thêm category
-    Page<Post> findByTenant_IdAndDeleteStatusAndStatusAndCategory_IdAndTitleContainingIgnoreCase(
-            Long tenantId,
+    Page<Post> findByDeleteStatusAndStatusAndCategory_IdAndTitleContainingIgnoreCase(
             DeleteStatus deleteStatus,
             PostStatus status,
             Long categoryId,
@@ -71,8 +56,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     );
 
     // Filter thêm source
-    Page<Post> findByTenant_IdAndDeleteStatusAndStatusAndSource_IdAndTitleContainingIgnoreCase(
-            Long tenantId,
+    Page<Post> findByDeleteStatusAndStatusAndSource_IdAndTitleContainingIgnoreCase(
             DeleteStatus deleteStatus,
             PostStatus status,
             Long sourceId,
@@ -80,32 +64,31 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             Pageable pageable
     );
 
-
     // =====================
     // PUBLIC: latest / by category
     // =====================
-
-    Page<Post> findByTenant_IdAndStatusAndDeleteStatusOrderByPublishedAtDesc(
-            Long tenantId,
+    Page<Post> findByStatusAndDeleteStatusOrderByPublishedAtDesc(
             PostStatus status,
             DeleteStatus deleteStatus,
             Pageable pageable
     );
 
-    Page<Post> findByTenant_IdAndCategory_IdAndStatusAndDeleteStatusOrderByPublishedAtDesc(
-            Long tenantId,
+    Page<Post> findByCategory_IdAndStatusAndDeleteStatusOrderByPublishedAtDesc(
             Long categoryId,
             PostStatus status,
             DeleteStatus deleteStatus,
             Pageable pageable
     );
 
+    Optional<Post> findBySlugAndStatusAndDeleteStatus(
+            String slug,
+            PostStatus status,
+            DeleteStatus deleteStatus
+    );
 
     // =====================
     // PENDING QUEUE cho content crawler
     // =====================
-
-    // Lấy danh sách post pending của 1 source (phục vụ content crawler)
     Page<Post> findBySource_IdAndStatus(
             Long sourceId,
             PostStatus status,
@@ -115,23 +98,19 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // Nếu muốn crawl toàn hệ thống:
     Page<Post> findByStatus(PostStatus status, Pageable pageable);
 
-
     // =====================
     // FULLTEXT SEARCH (public search)
     // =====================
-
     @Query(
             value = """
                     SELECT * FROM posts 
-                    WHERE tenant_id = :tenantId 
-                      AND status = :status 
+                    WHERE status = :status 
                       AND delete_status = :deleteStatus
                       AND MATCH(title, summary, content) AGAINST (:keyword IN NATURAL LANGUAGE MODE)
                     """,
             countQuery = """
                     SELECT COUNT(*) FROM posts 
-                    WHERE tenant_id = :tenantId 
-                      AND status = :status 
+                    WHERE status = :status 
                       AND delete_status = :deleteStatus
                       AND MATCH(title, summary, content) AGAINST (:keyword IN NATURAL LANGUAGE MODE)
                     """,
@@ -139,7 +118,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     )
     Page<Post> searchFullText(
             @Param("keyword") String keyword,
-            @Param("tenantId") Long tenantId,
             @Param("status") String status,
             @Param("deleteStatus") String deleteStatus,
             Pageable pageable

@@ -7,26 +7,29 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 public interface TagService {
-    List<TagDto> listByTenant(Long tenantId);
+    List<TagDto> listTags();  // Lấy tất cả tags thay vì theo tenant
+
     TagDto getById(Long id);
+
     TagDto create(TagCreateRequest req);
+
     TagDto update(Long id, TagUpdateRequest req);
+
     void delete(Long id);
 
-    // tiện cho crawler/admin: upsert theo name trong tenant
-    TagDto upsertByName(Long tenantId, String name);
-    List<TagDto> suggestTags(Long tenantId, String keyword, int limit);
+    // Tiện cho crawler/admin: upsert theo name trong tenant
+    TagDto upsertByName(String name);
 
-    TagDto getBySlug(Long tenantId, String slug);
+    List<TagDto> suggestTags(String keyword, int limit);
 
-//    Page<PostSummaryDto> getPostsByTagSlug(Long tenantId, String slug, Pageable pageable);
+    TagDto getBySlug(String slug);
 
     // Admin
-    Page<TagDto> searchAdmin(Long tenantId, String keyword, Pageable pageable);
+    Page<TagDto> searchAdmin(String keyword, Pageable pageable);
 
-    TagDto createTag(Long tenantId, TagDto dto);
+    TagDto createTag(TagDto dto);
 
-    TagDto updateTag(Long tenantId, Long id, TagDto dto);
+    TagDto updateTag(Long id, TagDto dto);
 
-    void deleteTag(Long tenantId, Long id)
+    void deleteTag(Long id);
 }

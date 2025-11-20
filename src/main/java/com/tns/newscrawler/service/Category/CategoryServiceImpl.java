@@ -4,18 +4,13 @@ import com.tns.newscrawler.dto.Category.CategoryCreateRequest;
 import com.tns.newscrawler.dto.Category.CategoryDto;
 import com.tns.newscrawler.dto.Category.CategoryUpdateRequest;
 import com.tns.newscrawler.entity.Category;
-import com.tns.newscrawler.entity.Tenant;
 import com.tns.newscrawler.mapper.Category.CategoryMapper;
-import com.tns.newscrawler.mapper.Post.PostMapper;
 import com.tns.newscrawler.repository.CategoryRepository;
-import com.tns.newscrawler.repository.TenantRepository;
-import com.tns.newscrawler.service.Category.CategoryService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -23,24 +18,15 @@ import java.util.List;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final TenantRepository tenantRepository;
 
-    public CategoryServiceImpl(CategoryRepository categoryRepository,
-                               TenantRepository tenantRepository) {
+    public CategoryServiceImpl(CategoryRepository categoryRepository) {
         this.categoryRepository = categoryRepository;
-        this.tenantRepository = tenantRepository;
     }
+
     @Override
     public List<CategoryDto> getCategories() {
         return categoryRepository.findAll()
                 .stream().map(CategoryMapper::toDto).toList();
-    }
-    @Override
-    public List<CategoryDto> getByTenant(Long tenantId) {
-        return categoryRepository.findByTenant_Id(tenantId)
-                .stream()
-                .map(CategoryMapper::toDto)
-                .toList();
     }
 
     @Override
@@ -52,8 +38,8 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public List<CategoryDto> getActiveByTenant(Long tenantId) {
-        return categoryRepository.findByTenant_IdAndIsActiveTrue(tenantId)
+    public List<CategoryDto> getActiveByTenant() {
+        return categoryRepository.findByIsActiveTrue()
                 .stream()
                 .map(CategoryMapper::toDto)
                 .toList();
@@ -66,21 +52,10 @@ public class CategoryServiceImpl implements CategoryService {
         return CategoryMapper.toDto(c);
     }
 
-
     @Override
     public CategoryDto create(CategoryCreateRequest req) {
-        // 1. check tenant
-        Tenant tenant = tenantRepository.findById(req.getTenantId())
-                .orElseThrow(() -> new RuntimeException("Tenant not found"));
-
-        // 2. check code unique trong tenant
-        if (categoryRepository.existsByTenant_IdAndCode(tenant.getId(), req.getCode())) {
-            throw new RuntimeException("Category code already exists in this tenant");
-        }
-
-        // 3. create
+        // 1. create
         Category c = Category.builder()
-                .tenant(tenant)
                 .code(req.getCode())
                 .name(req.getName())
                 .description(req.getDescription())
@@ -105,68 +80,50 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public void delete(Long id) {
-        // tuỳ: xóa hẳn hoặc chuyển inactive
+        // Tuỳ: xóa hẳn hoặc chuyển inactive
         Category c = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
         c.setIsActive(false);
-        // nếu muốn xoá hẳn:
+        // Nếu muốn xoá hẳn:
         // categoryRepository.deleteById(id);
     }
 
     @Override
-    public List<CategoryDto> getPublicCategories(Long tenantId) {
+    public List<CategoryDto> getPublicCategories() {
         return categoryRepository
-                .findByTenantIdAndIsActiveTrueOrderByNameAsc(tenantId)
+                .findByIsActiveTrueOrderByNameAsc()
                 .stream()
                 .map(CategoryMapper::toDto)
                 .toList();
     }
 
     @Override
-    public CategoryDto getCategoryBySlug(Long tenantId, String slug) {
+    public CategoryDto getCategoryBySlug(String slug) {
         Category category = categoryRepository
-                .findByTenantIdAndSlugAndIsActiveTrue(tenantId, slug)
+                .findBySlugAndIsActiveTrue(slug)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
         return CategoryMapper.toDto(category);
     }
 
-//    @Override
-//    public Page<PostSummaryDto> getPostsByCategorySlug(Long tenantId, String slug, Pageable pageable) {
-//        Category category = categoryRepository
-//                .findByTenantIdAndSlugAndIsActiveTrue(tenantId, slug)
-//                .orElseThrow(() -> new RuntimeException("Category not found"));
-//
-//        Page<Post> page = postRepository
-//                .findByTenantIdAndCategoryIdAndStatusAndDeleteStatusOrderByPublishedAtDesc(
-//                        tenantId, category.getId(), "PUBLISHED", "NORMAL", pageable);
-//
-//        return page.map(PostMapper::toSummaryDto);
-//    }
-
     @Override
-    public Page<CategoryDto> searchAdmin(Long tenantId, String keyword, Boolean active, Pageable pageable) {
+    public Page<CategoryDto> searchAdmin(String keyword, Boolean active, Pageable pageable) {
         // Anh tự define thêm method trong repo nếu cần search nâng cao.
         // Tạm thời dùng findAll + filter đơn giản hoặc viết query riêng.
         throw new UnsupportedOperationException("Implement me");
     }
 
     @Override
-    public CategoryDto createCategory(Long tenantId, CategoryDto dto) {
+    public CategoryDto createCategory(CategoryDto dto) {
         Category entity = CategoryMapper.toEntity(dto);
-        entity.setTenantId(tenantId);
         entity.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : Boolean.TRUE);
         Category saved = categoryRepository.save(entity);
         return CategoryMapper.toDto(saved);
     }
 
     @Override
-    public CategoryDto updateCategory(Long tenantId, Long id, CategoryDto dto) {
+    public CategoryDto updateCategory(Long id, CategoryDto dto) {
         Category entity = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
-
-        if (!tenantId.equals(entity.getTenantId())) {
-            throw new RuntimeException("Access denied");
-        }
 
         CategoryMapper.updateEntity(dto, entity);
         Category saved = categoryRepository.save(entity);
@@ -174,12 +131,9 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public void toggleActive(Long tenantId, Long id, boolean isActive) {
+    public void toggleActive(Long id, boolean isActive) {
         Category entity = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
-        if (!tenantId.equals(entity.getTenant())) {
-            throw new RuntimeException("Access denied");
-        }
         entity.setIsActive(isActive);
         categoryRepository.save(entity);
     }

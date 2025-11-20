@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "posts",
         indexes = {
-                @Index(name="idx_posts_tenant", columnList="tenant_id"),
                 @Index(name="idx_posts_status", columnList="status"),
                 @Index(name="idx_posts_category", columnList="category_id"),
                 @Index(name="idx_posts_source", columnList="source_id"),
@@ -23,18 +22,17 @@ public class Post {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // multi-tenant
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
-
-    // liên kết
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "source_id")
+    // Liên kết với Source
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_id")
     private Source source;
 
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "category_id")
+    // Liên kết với Category
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
     private Category category;
 
-    // link gốc dùng để idempotent khi crawler đẩy vào
+    // Link gốc dùng để idempotent khi crawler đẩy vào
     @Column(name="origin_url", nullable=false, length=500)
     private String originUrl;
 
@@ -53,7 +51,7 @@ public class Post {
     private String seoKeywords;
     @Column(columnDefinition="TEXT") private String summary;
 
-    // lưu cả raw để sau “generate unique”
+    // Lưu cả raw để sau “generate unique”
     @Lob @Column(name="content", columnDefinition="LONGTEXT")
     private String content;
 
@@ -91,6 +89,7 @@ public class Post {
         if (deleteStatus == null) deleteStatus = DeleteStatus.Active;
         if (viewCount == null) viewCount = 0;
     }
+
     @PreUpdate
     public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
 }

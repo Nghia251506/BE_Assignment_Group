@@ -9,7 +9,6 @@ public class SourceMapper {
         if (s == null) return null;
         SourceDto dto = new SourceDto();
         dto.setId(s.getId());
-        dto.setTenantId(s.getTenant() != null ? s.getTenant().getId() : null);
         dto.setCategoryId(s.getCategory() != null ? s.getCategory().getId() : null);
         dto.setName(s.getName());
         dto.setBaseUrl(s.getBaseUrl());

@@ -10,11 +10,9 @@ import java.util.List;
 
 public interface CategoryService {
 
-    List<CategoryDto> getByTenant(Long tenantId);
-    List<CategoryDto> getBySlug(String slug);
     List<CategoryDto> getCategories();
-
-    List<CategoryDto> getActiveByTenant(Long tenantId);
+    List<CategoryDto> getBySlug(String slug);
+    List<CategoryDto> getActiveByTenant();  // Bỏ tenantId
 
     CategoryDto getById(Long id);
 
@@ -23,18 +21,16 @@ public interface CategoryService {
     CategoryDto update(Long id, CategoryUpdateRequest req);
 
     void delete(Long id);
-    List<CategoryDto> getPublicCategories(Long tenantId);
+    List<CategoryDto> getPublicCategories();
 
-    CategoryDto getCategoryBySlug(Long tenantId, String slug);
-
-//    Page<PostSummaryDto> getPostsByCategorySlug(Long tenantId, String slug, Pageable pageable);
+    CategoryDto getCategoryBySlug(String slug);
 
     // Admin
-    Page<CategoryDto> searchAdmin(Long tenantId, String keyword, Boolean active, Pageable pageable);
+    Page<CategoryDto> searchAdmin(String keyword, Boolean active, Pageable pageable);
 
-    CategoryDto createCategory(Long tenantId, CategoryDto dto);
+    CategoryDto createCategory(CategoryDto dto);
 
-    CategoryDto updateCategory(Long tenantId, Long id, CategoryDto dto);
+    CategoryDto updateCategory(Long id, CategoryDto dto);
 
-    void toggleActive(Long tenantId, Long id, boolean isActive);
+    void toggleActive(Long id, boolean isActive);
 }

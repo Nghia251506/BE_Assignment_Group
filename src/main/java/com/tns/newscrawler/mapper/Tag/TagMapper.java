@@ -8,7 +8,6 @@ public class TagMapper {
         if (entity == null) return null;
         TagDto dto = new TagDto();
         dto.setId(entity.getId());
-        dto.setTenant(entity.getTenant());
         dto.setName(entity.getName());
         dto.setSlug(entity.getSlug());
         dto.setSeoTitle(entity.getSeoTitle());
@@ -18,7 +17,6 @@ public class TagMapper {
     }
 
     public static void updateEntity(TagDto dto, Tag entity) {
-        entity.setTenant(dto.getTenant());
         entity.setName(dto.getName());
         entity.setSlug(dto.getSlug());
         entity.setSeoTitle(dto.getSeoTitle());

@@ -4,11 +4,9 @@ import com.tns.newscrawler.dto.User.UserCreateRequest;
 import com.tns.newscrawler.dto.User.UserDto;
 import com.tns.newscrawler.dto.User.UserUpdateRequest;
 import com.tns.newscrawler.entity.Role;
-import com.tns.newscrawler.entity.Tenant;
 import com.tns.newscrawler.entity.User;
 import com.tns.newscrawler.mapper.User.UserMapper;
 import com.tns.newscrawler.repository.RoleRepository;
-import com.tns.newscrawler.repository.TenantRepository;
 import com.tns.newscrawler.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -24,7 +22,6 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepo;
-    private final TenantRepository tenantRepo;
     private final RoleRepository roleRepo;
     private final PasswordEncoder passwordEncoder;
 
@@ -41,10 +38,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserDto> getByTenant(Long tenantId) {
-        // giả sử anh có method này trong repo, nếu tên khác thì đổi lại
-        List<User> users = userRepo.findByTenant_Id(tenantId);
-        return users.stream()
+    public List<UserDto> getAllActiveUsers() {
+        // Lấy tất cả người dùng đang hoạt động (hoặc bất kỳ điều kiện nào bạn cần)
+        return userRepo.findAll().stream()
+                .filter(User::getIsActive)
                 .map(UserMapper::toDto)
                 .toList();
     }
@@ -65,12 +62,6 @@ public class UserServiceImpl implements UserService {
 
         if (req.getPassword() != null && !req.getPassword().isBlank()) {
             u.setPasswordHash(passwordEncoder.encode(req.getPassword()));
-        }
-
-        if (req.getTenantId() != null) {
-            Tenant tenant = tenantRepo.findById(req.getTenantId())
-                    .orElseThrow(() -> new IllegalArgumentException("Tenant not found: " + req.getTenantId()));
-            u.setTenant(tenant);
         }
 
         if (req.getRole() != null) {

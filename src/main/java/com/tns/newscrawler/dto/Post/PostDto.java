@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 @Data
 public class PostDto {
     private Long id;
-    private Long tenantId;
     private Long sourceId;
     private Long categoryId;
 

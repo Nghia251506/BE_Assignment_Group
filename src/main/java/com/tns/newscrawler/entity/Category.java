@@ -17,17 +17,18 @@ public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "tenant_id")
-    private Long tenantId;
-    // multi-tenant
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
+
+    // Bỏ tenant_id và mối quan hệ với Tenant
+    // @Column(name = "tenant_id") private Long tenantId;
+    // @ManyToOne(fetch = FetchType.LAZY)
+    // @JoinColumn(name = "tenant_id") private Tenant tenant;
+
     @Column(name = "parent_id")
     private Long parentId;
 
     @Column(nullable = false, unique = false, length = 50)
     private String code;
+
     @Column(name = "slug", length = 255)
     private String slug;
 
@@ -36,6 +37,7 @@ public class Category {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
     @Column(name = "seo_title", length = 255)
     private String seoTitle;
 

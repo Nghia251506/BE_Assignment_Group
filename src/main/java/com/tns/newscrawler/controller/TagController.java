@@ -12,11 +12,14 @@ import java.util.List;
 public class TagController {
 
     private final TagService tagService;
-    public TagController(TagService tagService) { this.tagService = tagService; }
 
-    @GetMapping("/tenant/{tenantId}")
-    public ResponseEntity<List<TagDto>> listByTenant(@PathVariable Long tenantId) {
-        return ResponseEntity.ok(tagService.listByTenant(tenantId));
+    public TagController(TagService tagService) {
+        this.tagService = tagService;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<TagDto>> list() {
+        return ResponseEntity.ok(tagService.listTags());
     }
 
     @GetMapping("/{id}")
@@ -41,8 +44,8 @@ public class TagController {
     }
 
     // upsert theo name (tiện khi admin nhập tag mới tại form post)
-    @PostMapping("/tenant/{tenantId}/upsert")
-    public ResponseEntity<TagDto> upsert(@PathVariable Long tenantId, @RequestParam String name) {
-        return ResponseEntity.ok(tagService.upsertByName(tenantId, name));
+    @PostMapping("/upsert")
+    public ResponseEntity<TagDto> upsert(@RequestParam String name) {
+        return ResponseEntity.ok(tagService.upsertByName(name));
     }
 }

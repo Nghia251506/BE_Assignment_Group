@@ -3,24 +3,21 @@ package com.tns.newscrawler.controller;
 import com.tns.newscrawler.dto.Category.CategoryCreateRequest;
 import com.tns.newscrawler.dto.Category.CategoryDto;
 import com.tns.newscrawler.dto.Category.CategoryUpdateRequest;
-import com.tns.newscrawler.dto.Post.PostCreateRequest;
-import com.tns.newscrawler.dto.Post.PostDto;
-import com.tns.newscrawler.dto.Post.PostUpdateRequest;
+import com.tns.newscrawler.dto.Post.*;
 import com.tns.newscrawler.dto.Source.SourceCreateRequest;
 import com.tns.newscrawler.dto.Source.SourceDto;
 import com.tns.newscrawler.dto.Source.SourceUpdateRequest;
-import com.tns.newscrawler.dto.Tenant.TenantCreateRequest;
-import com.tns.newscrawler.dto.Tenant.TenantDto;
-import com.tns.newscrawler.dto.Tenant.TenantUpdateRequest;
 import com.tns.newscrawler.dto.User.UserCreateRequest;
 import com.tns.newscrawler.dto.User.UserDto;
 import com.tns.newscrawler.dto.User.UserUpdateRequest;
+import com.tns.newscrawler.entity.Setting;
+import com.tns.newscrawler.repository.SettingRepository;
 import com.tns.newscrawler.service.Category.CategoryService;
 import com.tns.newscrawler.service.Crawler.ContentCrawlerService;
 import com.tns.newscrawler.service.Crawler.LinkCrawlerService;
 import com.tns.newscrawler.service.Post.PostService;
+import com.tns.newscrawler.service.Setting.SettingService;
 import com.tns.newscrawler.service.Source.SourceService;
-import com.tns.newscrawler.service.Tenant.TenantService;
 import com.tns.newscrawler.service.User.UserService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
@@ -39,40 +37,32 @@ public class AdminController {
     private final PostService postService;
     private final SourceService sourceService;
     private final UserService userService;
-    private final TenantService tenantService;
+    private final SettingService SettingService;
 
     public AdminController(CategoryService categoryService,
                            LinkCrawlerService linkCrawlerService,
                            ContentCrawlerService contentCrawlerService,
                            PostService postService, SourceService sourceService,
-                           UserService userService,
-                           TenantService tenantService)
-    {
+                           UserService userService, SettingService settingService) {
         this.categoryService = categoryService;
         this.linkCrawlerService = linkCrawlerService;
         this.contentCrawlerService = contentCrawlerService;
         this.postService = postService;
         this.sourceService = sourceService;
         this.userService = userService;
-        this.tenantService = tenantService;
+
+        SettingService = settingService;
     }
 
-    // list cho 1 tenant
-    @GetMapping("/categories/tenant/{tenantId}")
-    public ResponseEntity<List<CategoryDto>> getCategoryByTenant(@PathVariable Long tenantId) {
-        return ResponseEntity.ok(categoryService.getByTenant(tenantId));
+    // Category
+    @GetMapping("/categories")
+    public ResponseEntity<List<CategoryDto>> getCategories() {
+        return ResponseEntity.ok(categoryService.getCategories());
     }
-
 
     @GetMapping("/categories/{slug}")
     public ResponseEntity<List<CategoryDto>> getCategoryBySlug(@PathVariable String slug) {
         return ResponseEntity.ok(categoryService.getBySlug(slug));
-    }
-
-
-    @GetMapping("/categories/tenant/{tenantId}/active")
-    public ResponseEntity<List<CategoryDto>> getCategoryActiveByTenant(@PathVariable Long tenantId) {
-        return ResponseEntity.ok(categoryService.getActiveByTenant(tenantId));
     }
 
     @PostMapping("/categories")
@@ -82,7 +72,7 @@ public class AdminController {
 
     @PutMapping("/categories/{id}")
     public ResponseEntity<CategoryDto> updateCategory(@PathVariable Long id,
-                                              @RequestBody CategoryUpdateRequest req) {
+                                                      @RequestBody CategoryUpdateRequest req) {
         return ResponseEntity.ok(categoryService.update(id, req));
     }
 
@@ -92,93 +82,87 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
-    //crawler
-    // Crawl tất cả source active
+    // Crawler
     @PostMapping("/crawler/links/all")
     public String crawlAll() {
         int total = linkCrawlerService.crawlAllActiveSources();
         return "Upsert " + total + " links for all active sources";
     }
 
-    // Crawl theo tenant
-    @PostMapping("/crawler/links/by-tenant")
-    public String crawlByTenant(@RequestParam("tenantId") Long tenantId) {
-        int total = linkCrawlerService.crawlActiveSourcesByTenant(tenantId);
-        return "Upsert " + total + " links for tenant " + tenantId + ": " + total + " links";
-    }
-    // ✅ NEW: Crawl content cho các post pending của 1 source
+
     @PostMapping("/crawler/content/by-source")
-    public String crawlContentBySource(
-            @RequestParam Long sourceId,
-            @RequestParam(defaultValue = "20") int limit
-    ) {
+    public String crawlContentBySource(@RequestParam Long sourceId,
+                                       @RequestParam(defaultValue = "20") int limit) {
         int ok = contentCrawlerService.crawlPendingBySource(sourceId, limit);
         return "Crawled content for " + ok + " posts of source " + sourceId;
     }
 
-    //post
-    // Get all posts for admin with pagination
+    // Post
     @GetMapping("/posts")
     public ResponseEntity<Page<PostDto>> getAllPosts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<PostDto> posts = postService.getAllPosts(pageable);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status, // Thêm điều kiện status nếu cần
+            @RequestParam(required = false) Long categoryId, // Thêm categoryId nếu muốn filter theo category
+            @RequestParam(required = false) Long sourceId) {  // Thêm sourceId nếu muốn filter theo source
+
+        PostSearchRequest req = new PostSearchRequest();
+        req.setPage(page);
+        req.setSize(size);
+        req.setKeyword(keyword);
+        req.setStatus(status);
+        req.setCategoryId(categoryId);
+        req.setSourceId(sourceId);
+
+        Page<PostDto> posts = postService.search(req);  // Gọi search thay vì getLatestPosts
+
         return ResponseEntity.ok(posts);
     }
 
-    // Get post by slug for admin
     @GetMapping("/posts/{slug}")
-    public ResponseEntity<PostDto> getPostBySlug(@PathVariable String slug) {
-        PostDto postDto = postService.getBySlug(slug);
+    public ResponseEntity<PostDetailDto> getPostBySlug(@PathVariable String slug) {
+        PostDetailDto postDto = postService.getPostBySlug(slug);
         return ResponseEntity.ok(postDto);
     }
 
-    // Create new post
     @PostMapping("/posts")
     public ResponseEntity<PostDto> createPost(@RequestBody PostCreateRequest req) {
         PostDto postDto = postService.create(req);
         return ResponseEntity.ok(postDto);
     }
+    @PostMapping("/posts/{id}/generate")
+    public ResponseEntity<PostDto> generatePost(@PathVariable Long id){
+        PostDto postDto = postService.generatePost(id);
+        return ResponseEntity.ok(postDto);
+    }
 
-    // Update post by id
     @PutMapping("/posts/{id}")
     public ResponseEntity<PostDto> updatePost(@PathVariable Long id, @RequestBody PostUpdateRequest req) {
         PostDto postDto = postService.update(id, req);
         return ResponseEntity.ok(postDto);
     }
 
-    // Publish post by id
     @PutMapping("/posts/{id}/publish")
     public ResponseEntity<PostDto> publishPost(@PathVariable Long id) {
         PostDto postDto = postService.publishPost(id);
         return ResponseEntity.ok(postDto);
     }
 
-    // Soft delete post by id
     @DeleteMapping("/posts/{id}")
-    public ResponseEntity<Void> softDeletePost(Long tenantId,@PathVariable Long id, @RequestParam(required = false) Long userId) {
-
-        postService.softDeletePost(tenantId,id, userId);
+    public ResponseEntity<Void> softDeletePost(@PathVariable Long id, @RequestParam(required = false) Long userId) {
+        postService.softDeletePost(id, userId);
         return ResponseEntity.noContent().build();
     }
 
-    //source
-
-    @GetMapping("/source/tenant/{tenantId}")
-    public ResponseEntity<List<SourceDto>> getSourceByTenant(@PathVariable Long tenantId) {
-        return ResponseEntity.ok(sourceService.getByTenant(tenantId));
+    @GetMapping("/categories/{slug}/posts-count")
+    public int getArticleCountByCategorySlug(@PathVariable String slug) {
+        return postService.getArticleCountByCategorySlug(slug);
     }
 
-    // list active theo tenant (cho crawler hoặc FE)
-    @GetMapping("/source/tenant/{tenantId}/active")
-    public ResponseEntity<List<SourceDto>> getSourceActiveByTenant(@PathVariable Long tenantId) {
-        return ResponseEntity.ok(sourceService.getActiveByTenant(tenantId));
-    }
-
-    // cho crawler chung
-    @GetMapping("/source/active")
-    public ResponseEntity<List<SourceDto>> getAllActive() {
+    // Source
+    @GetMapping("/sources")
+    public ResponseEntity<List<SourceDto>> getSources() {
         return ResponseEntity.ok(sourceService.getAllActive());
     }
 
@@ -192,28 +176,21 @@ public class AdminController {
         return ResponseEntity.ok(sourceService.create(req));
     }
 
-    @PutMapping("/source/{id}")
-    public ResponseEntity<SourceDto> updateSource(@PathVariable Long id,
-                                            @RequestBody SourceUpdateRequest req) {
+    @PutMapping("/sources/{id}")
+    public ResponseEntity<SourceDto> updateSource(@PathVariable Long id, @RequestBody SourceUpdateRequest req) {
         return ResponseEntity.ok(sourceService.update(id, req));
     }
 
-    @DeleteMapping("/source/{id}")
+    @DeleteMapping("/sources/{id}")
     public ResponseEntity<Void> deleteSource(@PathVariable Long id) {
         sourceService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
-    //user
+    // User
     @GetMapping("/users")
-    public ResponseEntity<List<UserDto>> getAll() {
+    public ResponseEntity<List<UserDto>> getAllUsers() {
         return ResponseEntity.ok(userService.getAll());
-    }
-
-    // lấy user theo tenant
-    @GetMapping("/users/tenant/{tenantId}")
-    public ResponseEntity<List<UserDto>> getUserByTenant(@PathVariable Long tenantId) {
-        return ResponseEntity.ok(userService.getByTenant(tenantId));
     }
 
     @GetMapping("/users/{id}")
@@ -227,8 +204,7 @@ public class AdminController {
     }
 
     @PutMapping("/users/{id}")
-    public ResponseEntity<UserDto> updateUser(@PathVariable Long id,
-                                          @RequestBody UserUpdateRequest req) {
+    public ResponseEntity<UserDto> updateUser(@PathVariable Long id, @RequestBody UserUpdateRequest req) {
         return ResponseEntity.ok(userService.update(id, req));
     }
 
@@ -238,32 +214,23 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
-    //tenant
-
-    @GetMapping("/tenants")
-    public ResponseEntity<List<TenantDto>> getAllTenants() {
-        return ResponseEntity.ok(tenantService.getAll());
+    //setting
+    // Lấy cài đặt SEO và Auto-Crawler
+    @GetMapping("/settings")
+    public ResponseEntity<Setting> getSettings() {
+        Setting setting = SettingService.getSettings();
+        return ResponseEntity.ok(setting);
     }
 
-    @GetMapping("/tenants/{id}")
-    public ResponseEntity<TenantDto> getTenantById(@PathVariable Long id) {
-        return ResponseEntity.ok(tenantService.getById(id));
+    // Cập nhật cài đặt SEO và Auto-Crawler
+    @PutMapping("/settings")
+    public ResponseEntity<Setting> updateSettings(Long Id,@RequestBody Setting setting) {
+        Setting updatedSetting = SettingService.updateSettings(Id,setting);
+        return ResponseEntity.ok(updatedSetting);
     }
-
-    @PostMapping("/tenants")
-    public ResponseEntity<TenantDto> createTenant(@RequestBody TenantCreateRequest req) {
-        return ResponseEntity.ok(tenantService.create(req));
-    }
-
-    @PutMapping("/tenants/{id}")
-    public ResponseEntity<TenantDto> update(@PathVariable Long id,
-                                            @RequestBody TenantUpdateRequest req) {
-        return ResponseEntity.ok(tenantService.update(id, req));
-    }
-
-    @DeleteMapping("/tenants/{id}")
-    public ResponseEntity<Void> deleteTenant(@PathVariable Long id) {
-        tenantService.delete(id);
-        return ResponseEntity.noContent().build();
+    @PostMapping("/settings")
+    public ResponseEntity<Setting> createSetting(@RequestBody Setting setting) {
+        Setting createdSetting = SettingService.createSetting(setting);
+        return ResponseEntity.ok(createdSetting);
     }
 }

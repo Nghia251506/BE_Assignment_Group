@@ -13,7 +13,6 @@ public class PostMapper {
         d.setId(p.getId());
 
         // liên kết
-        d.setTenantId(p.getTenant() != null ? p.getTenant().getId() : null);
         d.setSourceId(p.getSource() != null ? p.getSource().getId() : null);
         d.setCategoryId(p.getCategory() != null ? p.getCategory().getId() : null);
 

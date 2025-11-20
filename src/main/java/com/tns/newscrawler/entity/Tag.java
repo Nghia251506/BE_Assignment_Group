@@ -6,18 +6,12 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "tags",
-        indexes = @Index(name="idx_tags_tenant", columnList = "tenant_id"))
+@Table(name = "tags")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Tag {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    // multi-tenant
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
 
     @Column(nullable = false, length = 100)
     private String name;

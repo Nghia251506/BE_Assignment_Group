@@ -1,6 +1,7 @@
 package com.tns.newscrawler.controller;
 
 import com.tns.newscrawler.dto.Category.CategoryDto;
+import com.tns.newscrawler.dto.Post.PostDetailDto;
 import com.tns.newscrawler.dto.Post.PostDto;
 import com.tns.newscrawler.service.Category.CategoryService;
 import com.tns.newscrawler.service.Post.PostService;
@@ -25,32 +26,27 @@ public class ClientController {
     }
 
     @GetMapping("/categories")
-    public List<CategoryDto> getCategories(@RequestHeader("X-Tenant-Id") Long tenantId) {
-        return categoryService.getPublicCategories(tenantId);
+    public List<CategoryDto> getCategories() {
+        return categoryService.getCategories();  // Đã bỏ tenantId, gọi getCategories mà không cần tenantId
     }
 
     @GetMapping("/categories/{slug}")
-    public CategoryDto getCategoryDetail(@RequestHeader("X-Tenant-Id") Long tenantId,
-                                         @PathVariable String slug) {
-        return categoryService.getCategoryBySlug(tenantId, slug);
+    public CategoryDto getCategoryDetail(@PathVariable String slug) {
+        return categoryService.getCategoryBySlug(slug);  // Đã bỏ tenantId, gọi getCategoryBySlug mà không cần tenantId
     }
-
-//    @GetMapping("/{slug}/posts")
-//    public Page<PostSummaryDto> getCategoryPosts(@RequestHeader("X-Tenant-Id") Long tenantId,
-//                                                 @PathVariable String slug,
-//                                                 Pageable pageable) {
-//        return categoryService.getPostsByCategorySlug(tenantId, slug, pageable);
-//    }
 
     @GetMapping("/posts")
     public Page<PostDto> getAllPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return postService.getAllPosts(pageable);
+        return postService.getLatestPosts(pageable);  // Sử dụng phương thức getLatestPosts thay cho getAllPosts
     }
+
     @GetMapping("/posts/{slug}")
-    public ResponseEntity<PostDto> getById(@PathVariable String slug) {
-        return ResponseEntity.ok(postService.getBySlug(slug));
+    public ResponseEntity<PostDetailDto> getPostBySlug(@PathVariable String slug) {
+        PostDetailDto postDto = postService.getPostBySlug(slug);  // Gọi phương thức getPostBySlug mà không cần tenantId
+        return ResponseEntity.ok(postDto);
     }
 }
+

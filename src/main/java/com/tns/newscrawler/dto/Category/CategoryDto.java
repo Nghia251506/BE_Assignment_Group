@@ -1,6 +1,5 @@
 package com.tns.newscrawler.dto.Category;
 
-import com.tns.newscrawler.entity.Tenant;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,8 +9,6 @@ import lombok.Setter;
 @Setter
 public class CategoryDto {
     private Long id;
-    private Long tenantId;
-    private Tenant tenant;
     private Long parentId;
     private String slug;
     private String seoTitle;

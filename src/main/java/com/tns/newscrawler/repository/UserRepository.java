@@ -12,7 +12,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByUsername(String username);
 
-    long countByTenant_IdAndIsActiveTrue(Long tenantId);
+    long countByIsActiveTrue();
 
-    List<User> findByTenant_Id(Long tenantId);
+    List<User> findByIsActiveTrue();
 }
