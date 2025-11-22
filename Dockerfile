@@ -8,7 +8,7 @@ COPY . .
 RUN mvn clean package -DskipTests
 
 # Stage 2: Run the application
-FROM openjdk:17-jdk
+FROM openjdk:17
 
 # Set the working directory in the container
 WORKDIR /app
@@ -21,3 +21,4 @@ EXPOSE 8080
 
 # Ensure the app runs on all network interfaces, not just localhost
 ENTRYPOINT ["java", "-jar", "/app/news-crawler.jar", "--server.address=0.0.0.0"]
+
