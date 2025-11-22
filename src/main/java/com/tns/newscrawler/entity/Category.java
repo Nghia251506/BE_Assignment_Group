@@ -18,11 +18,6 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Bỏ tenant_id và mối quan hệ với Tenant
-    // @Column(name = "tenant_id") private Long tenantId;
-    // @ManyToOne(fetch = FetchType.LAZY)
-    // @JoinColumn(name = "tenant_id") private Tenant tenant;
-
     @Column(name = "parent_id")
     private Long parentId;
 

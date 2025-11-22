@@ -36,6 +36,14 @@ public class CategoryServiceImpl implements CategoryService {
                 .map(CategoryMapper::toDto)
                 .toList();
     }
+    @Override
+    public List<Category> getAllParentCategories() {
+        return categoryRepository.findByParentIdIsNull();
+    }
+    @Override
+    public List<Category> getCategoriesByParentId(Long parentId) {
+        return categoryRepository.findByParentId(parentId);
+    }
 
     @Override
     public List<CategoryDto> getActiveByTenant() {

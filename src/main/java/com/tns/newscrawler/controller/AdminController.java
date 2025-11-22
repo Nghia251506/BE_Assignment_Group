@@ -10,6 +10,8 @@ import com.tns.newscrawler.dto.Source.SourceUpdateRequest;
 import com.tns.newscrawler.dto.User.UserCreateRequest;
 import com.tns.newscrawler.dto.User.UserDto;
 import com.tns.newscrawler.dto.User.UserUpdateRequest;
+import com.tns.newscrawler.entity.Category;
+import com.tns.newscrawler.entity.Post;
 import com.tns.newscrawler.entity.Setting;
 import com.tns.newscrawler.repository.SettingRepository;
 import com.tns.newscrawler.service.Category.CategoryService;
@@ -80,6 +82,19 @@ public class AdminController {
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
         categoryService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/categories/parent")
+    public ResponseEntity<List<Category>> getAllParentCategories() {
+        List<Category> categories = categoryService.getAllParentCategories();
+        return ResponseEntity.ok(categories);
+    }
+
+    // API lấy danh mục con của một danh mục cha
+    @GetMapping("/categories/{parentId}/children")
+    public ResponseEntity<List<Category>> getCategoriesByParentId(@PathVariable Long parentId) {
+        List<Category> categories = categoryService.getCategoriesByParentId(parentId);
+        return ResponseEntity.ok(categories);
     }
 
     // Crawler
@@ -162,6 +177,20 @@ public class AdminController {
     @GetMapping("/sources/{id}/posts-count")
     public int getArticleCountBySourceId(@PathVariable Long sourceId) {
         return postService.getArticleCountBySourceId(sourceId);
+    }
+
+    @GetMapping("/posts/filter")
+    public ResponseEntity<List<PostDto>> getPostsByCategory(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long parentId) {
+
+        // Kiểm tra nếu không có categoryId và parentId thì trả về lỗi
+        if (categoryId == null && parentId == null) {
+            return ResponseEntity.badRequest().body(null);
+        }
+
+        List<PostDto> posts = postService.getPostsByCategory(categoryId, parentId);
+        return ResponseEntity.ok(posts);
     }
 
     // Source

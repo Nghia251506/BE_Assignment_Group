@@ -35,12 +35,16 @@ public class JwtTokenProvider {
 
     // ---- Lấy username từ token ----
     public String getUsernameFromToken(String token) {
-        return Jwts.parser()
-                .verifyWith(key)        // verify chữ ký
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
+        try {
+            return Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .getSubject();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // ---- Validate token ----
@@ -49,11 +53,11 @@ public class JwtTokenProvider {
             Jwts.parser()
                     .verifyWith(key)
                     .build()
-                    .parseSignedClaims(token);  // parse + verify
+                    .parseSignedClaims(token); // ← Vẫn dùng parseSignedClaims bình thường
             return true;
-        } catch (JwtException | IllegalArgumentException ex) {
-            // log nếu cần
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
+
 }

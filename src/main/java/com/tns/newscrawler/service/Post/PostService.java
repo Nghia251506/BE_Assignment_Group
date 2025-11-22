@@ -5,8 +5,11 @@ import com.tns.newscrawler.dto.Post.PostDetailDto;
 import com.tns.newscrawler.dto.Post.PostDto;
 import com.tns.newscrawler.dto.Post.PostSearchRequest;
 import com.tns.newscrawler.dto.Post.PostUpdateRequest;
+import com.tns.newscrawler.entity.Post;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 public interface PostService {
 
@@ -36,6 +39,8 @@ public interface PostService {
     PostDto upsertByOrigin(PostCreateRequest req);
 
     PostDto generatePost(Long id);
+
+    List<PostDto> getPostsByCategory(Long categoryId, Long parentId);
 
     // =====================
     // PUBLIC API

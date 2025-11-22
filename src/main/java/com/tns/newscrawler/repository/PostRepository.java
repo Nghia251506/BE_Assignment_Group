@@ -7,9 +7,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
@@ -124,4 +126,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             @Param("deleteStatus") String deleteStatus,
             Pageable pageable
     );
+
+    @Query("SELECT p FROM Post p WHERE p.category.id = :categoryId OR p.category.parentId = :parentId")
+    List<Post> findByCategoryIdOrParentId(@Param("categoryId") Long categoryId, @Param("parentId") Long parentId);
+    @Modifying
+    @Query("DELETE FROM PostTag pt WHERE pt.post.id = :postId")
+    void deleteAllTagsByPostId(@Param("postId") Long postId);
 }

@@ -3,6 +3,7 @@ package com.tns.newscrawler.service.Category;
 import com.tns.newscrawler.dto.Category.CategoryCreateRequest;
 import com.tns.newscrawler.dto.Category.CategoryDto;
 import com.tns.newscrawler.dto.Category.CategoryUpdateRequest;
+import com.tns.newscrawler.entity.Category;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -33,4 +34,7 @@ public interface CategoryService {
     CategoryDto updateCategory(Long id, CategoryDto dto);
 
     void toggleActive(Long id, boolean isActive);
+
+    List<Category> getAllParentCategories();
+    List<Category> getCategoriesByParentId(Long parentId);
 }

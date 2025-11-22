@@ -2,6 +2,8 @@ package com.tns.newscrawler.dto.Post;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class PostUpdateRequest {
     private Long categoryId;
@@ -22,6 +24,7 @@ public class PostUpdateRequest {
     private String seoTitle;
     private String seoDescription;
     private String seoKeywords;
+    private List<Long> tagIds;
 
     // NEW: canonical
     private String canonicalUrl;

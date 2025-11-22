@@ -8,14 +8,18 @@ import com.tns.newscrawler.entity.Post.PostStatus;
 import com.tns.newscrawler.entity.Source;
 import com.tns.newscrawler.mapper.Post.PostMapper;
 import com.tns.newscrawler.repository.*;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.jsoup.Jsoup;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.webjars.NotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -24,6 +28,8 @@ public class PostServiceImpl implements PostService {
     private final PostRepository postRepo;
     private final SourceRepository sourceRepo;
     private final CategoryRepository categoryRepo;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public PostServiceImpl(PostRepository postRepo, SourceRepository sourceRepo, CategoryRepository categoryRepo) {
         this.postRepo = postRepo;
@@ -49,6 +55,11 @@ public class PostServiceImpl implements PostService {
     public Page<PostDto> searchPublic(String keyword, Pageable pageable) {
         return postRepo.searchFullText(keyword, PostStatus.published.name(), DeleteStatus.Active.name(), pageable)
                 .map(PostMapper::toDto);
+    }
+    @Override
+    public List<PostDto> getPostsByCategory(Long categoryId, Long parentId) {
+        List<Post> posts = postRepo.findByCategoryIdOrParentId(categoryId, parentId);
+        return posts.stream().map(PostMapper::toDto).collect(Collectors.toList());
     }
 
     // ==========================
@@ -134,26 +145,55 @@ public class PostServiceImpl implements PostService {
         return PostMapper.toDto(post);
     }
 
+    @Transactional
     @Override
-    public PostDto update(Long id, PostUpdateRequest req) {
-        Post post = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
+    public PostDto update(Long id, PostUpdateRequest request) {
+        // 1. LẤY ENTITY CHỨ KHÔNG PHẢI DTO!!!
+        Post post = postRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Post not found"));
 
-        if (req.getCategoryId() != null) {
-            Category category = categoryRepo.findById(req.getCategoryId())
-                    .orElseThrow(() -> new RuntimeException("Category not found"));
+        // 2. CẬP NHẬT CÁC FIELD TỪ REQUEST VÀO ENTITY
+        post.setTitle(request.getTitle());
+        post.setContent(request.getContent());
+        post.setSummary(request.getSummary());
+        post.setThumbnail(request.getThumbnail());
+        post.setSeoTitle(request.getSeoTitle());
+        post.setSeoDescription(request.getSeoDescription());
+        post.setSeoKeywords(request.getSeoKeywords());
+
+        // Nếu có status
+        if (request.getStatus() != null) {
+            post.setStatus(PostStatus.valueOf(request.getStatus()));
+        }
+
+        // Nếu có categoryId
+        if (request.getCategoryId() != null) {
+            Category category = categoryRepo.findById(request.getCategoryId())
+                    .orElseThrow(() -> new NotFoundException("Category not found"));
             post.setCategory(category);
         }
 
-        if (req.getTitle() != null) post.setTitle(req.getTitle());
-        if (req.getSlug() != null) post.setSlug(req.getSlug().isBlank() && req.getTitle() != null
-                ? slugify(req.getTitle()) : req.getSlug());
-        if (req.getSummary() != null) post.setSummary(req.getSummary());
-        if (req.getContent() != null) post.setContent(req.getContent());
-        if (req.getThumbnail() != null) post.setThumbnail(req.getThumbnail());
-        if (req.getStatus() != null) post.setStatus(PostStatus.valueOf(req.getStatus()));
+        // 3. XỬ LÝ TAG – ĐÃ SỬA ĐÚNG ENTITYMANAGER!!!
+        if (request.getTagIds() != null) {
+            // Xóa hết tag cũ
+            postRepo.deleteAllTagsByPostId(id);
 
-        Post savedPost = postRepo.save(post);
-        return PostMapper.toDto(savedPost);
+            // Thêm tag mới
+            if (!request.getTagIds().isEmpty()) {
+                String placeholders = request.getTagIds().stream()
+                        .map(tagId -> "(" + id + ", " + tagId + ")")
+                        .collect(Collectors.joining(", "));
+
+                String sql = "INSERT INTO post_tags (post_id, tag_id) VALUES " + placeholders;
+                entityManager.createNativeQuery(sql).executeUpdate();
+            }
+        }
+
+        // 4. SAVE ENTITY (không phải DTO!!!)
+        Post updatedPost = postRepo.save(post);
+
+        // 5. TRẢ VỀ DTO DÙNG MAPPER CỦA ANH
+        return PostMapper.toDto(updatedPost);
     }
 
     @Override
