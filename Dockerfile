@@ -9,6 +9,15 @@ RUN mvn clean package -DskipTests
 
 # Stage 2: Run the application
 FROM adoptopenjdk:17-jdk-hotspot
+
+# Set the working directory in the container
 WORKDIR /app
+
+# Copy the jar file from the build stage
 COPY --from=build /app/target/news-crawler.jar /app/news-crawler.jar
-ENTRYPOINT ["java", "-jar", "news-crawler.jar"]
+
+# Expose the port your application will run on (commonly 8080 for Spring Boot apps)
+EXPOSE 8080
+
+# Ensure the app runs on all network interfaces, not just localhost
+ENTRYPOINT ["java", "-jar", "/app/news-crawler.jar", "--server.address=0.0.0.0"]
