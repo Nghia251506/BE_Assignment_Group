@@ -1,24 +1,14 @@
-# Build stage
+# Stage 1: Build the application
 FROM maven:4.0.0-openjdk-17 as build
 
 WORKDIR /app
 
-# Sao chép toàn bộ mã nguồn vào container
-COPY . /app
+COPY . .
 
-# Build ứng dụng (bỏ qua tests)
 RUN mvn clean package -DskipTests
 
-# Final stage
-FROM openjdk:17
-
+# Stage 2: Run the application
+FROM adoptopenjdk:17-jdk-hotspot
 WORKDIR /app
-
-# Sao chép file .jar từ build stage vào final container
 COPY --from=build /app/target/news-crawler.jar /app/news-crawler.jar
-
-# Expose port 8888
-EXPOSE 8888
-
-# Chạy ứng dụng Spring Boot
-CMD ["java", "-jar", "/app/news-crawler.jar"]
+ENTRYPOINT ["java", "-jar", "news-crawler.jar"]
