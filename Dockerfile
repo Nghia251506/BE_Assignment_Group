@@ -8,7 +8,7 @@ COPY . .
 RUN mvn clean package -DskipTests
 
 # Stage 2: Run the application
-FROM openjdk:17-oracle
+FROM openjdk:17.0.2-jdk
 
 # Set the working directory in the container
 WORKDIR /app
