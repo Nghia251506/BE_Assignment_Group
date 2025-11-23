@@ -63,35 +63,26 @@ public class SecurityConfig {
         return http.build();
     }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        String[] activeProfiles = environment.getActiveProfiles();
-        boolean isProduction = false;
-        for (String profile : activeProfiles) {
-            if ("prod".equals(profile)) {
-                isProduction = true;
-                break;
-            }
-        }
+   @Bean
+public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration config = new CorsConfiguration();
 
-        if (isProduction) {
-            config.setAllowedOriginPatterns(List.of("*"));
-        } else {
-            config.setAllowedOriginPatterns(List.of(
-                    "http://localhost:5173",
-                    "http://localhost:3000",
-                    "http://127.0.0.1:5173"
-            ));
-        }
+    // KHÔNG BAO GIỜ được để "*" khi allowCredentials(true)
+    config.setAllowedOriginPatterns(List.of(
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://fe-assignment-group.vercel.app",     // FE chính của anh
+        "https://fe-assignment-group-git-*.vercel.app", // preview branches
+        "https://*.vercel.app"                         // backup
+    ));
 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setExposedHeaders(List.of("Set-Cookie"));
-        config.setAllowCredentials(true);
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+    config.setAllowedHeaders(List.of("*"));
+    config.setExposedHeaders(List.of("Set-Cookie"));
+    config.setAllowCredentials(true); // quan trọng nhất
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
+    return source;
+}
 }
