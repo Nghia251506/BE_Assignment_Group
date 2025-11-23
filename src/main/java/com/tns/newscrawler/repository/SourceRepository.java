@@ -3,9 +3,10 @@ package com.tns.newscrawler.repository;
 import com.tns.newscrawler.entity.Source;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
-
+@Repository
 public interface SourceRepository extends JpaRepository<Source, Long> {
 
     @Query("select s from Source s " +
