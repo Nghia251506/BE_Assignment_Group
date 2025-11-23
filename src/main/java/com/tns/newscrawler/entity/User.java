@@ -45,12 +45,12 @@ public class User {
     private LocalDateTime updatedAt;
 
     // Role relationship - now without tenant
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id")
     private Role role;
 
     // ================== PERMISSION ==================
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_permission",
             joinColumns = @JoinColumn(name = "user_id"),               // FK tới users.id

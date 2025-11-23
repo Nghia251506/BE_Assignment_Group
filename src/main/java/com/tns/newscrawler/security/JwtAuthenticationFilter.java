@@ -5,22 +5,23 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
 
+@Component // BẮT BUỘC PHẢI CÓ DÒNG NÀY
+@RequiredArgsConstructor // TỰ TẠO CONSTRUCTOR
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
-
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
-        this.jwtTokenProvider = jwtTokenProvider;
-    }
+    private final UserDetailsService userDetailsService; // BẮT BUỘC PHẢI CÓ
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -32,10 +33,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && jwtTokenProvider.validateToken(token)) {
             String username = jwtTokenProvider.getUsernameFromToken(token);
 
+            // QUAN TRỌNG NHẤT: LOAD USER THẬT TỪ DB + LẤY ROLE THẬT
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    username,
+                    userDetails,
                     null,
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                    userDetails.getAuthorities() // LẤY ROLE THẬT (ADMIN, USER, v.v.)
             );
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -44,9 +48,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    // HÀM QUAN TRỌNG NHẤT – ĐỌC TỪ COOKIE TRƯỚC, HEADER SAU
+    // ĐỌC TOKEN TỪ COOKIE TRƯỚC, HEADER SAU – HOÀN HẢO
     private String resolveToken(HttpServletRequest request) {
-        // 1. ĐỌC TỪ COOKIE TRƯỚC (FE dùng cookie)
+        // 1. Từ cookie (FE Vercel)
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
@@ -56,7 +60,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        // 2. ĐỌC TỪ HEADER (Postman, Swagger)
+        // 2. Từ header (Postman, Swagger)
         String bearerToken = request.getHeader("Authorization");
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);

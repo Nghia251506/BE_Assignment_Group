@@ -1,5 +1,6 @@
 package com.tns.newscrawler.security;
 
+import com.tns.newscrawler.entity.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.io.Decoders;
@@ -21,15 +22,18 @@ public class JwtTokenProvider {
             Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_KEY));
 
     // ---- Tạo token ----
-    public String generateToken(String username) {
+    public String generateToken(User user) { // ← ĐỔI THAM SỐ THÀNH User ĐỂ LẤY ROLE!!!
         Instant now = Instant.now();
-        Instant expiry = now.plus(1, ChronoUnit.DAYS); // 1 ngày
+        Instant expiry = now.plus(1, ChronoUnit.DAYS);
 
         return Jwts.builder()
-                .subject(username)
+                .subject(user.getUsername())                    // username
+                .claim("userId", user.getId())                  // NHỒI ID
+                .claim("roleName", user.getRole().getName())    // NHỒI ROLE NAME
+                .claim("roleCode", user.getRole().getCode())    // NHỒI ROLE CODE
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
-                .signWith(key)          // HS256 mặc định
+                .signWith(key)
                 .compact();
     }
 
