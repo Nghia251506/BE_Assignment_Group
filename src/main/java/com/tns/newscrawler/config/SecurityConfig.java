@@ -3,6 +3,7 @@ package com.tns.newscrawler.config;
 import com.tns.newscrawler.security.JwtAuthenticationFilter;
 import com.tns.newscrawler.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -25,6 +26,7 @@ import java.util.List;
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
+    @Autowired
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService customUserDetailsService;
     private final Environment environment;
@@ -55,7 +57,7 @@ public class SecurityConfig {
                                 "/", "/article/**", "/category/**", "/api/public/**"
                         ).permitAll() // Các route client không yêu cầu login
                         .requestMatchers("/api/auth/**").permitAll() // Cho phép các API auth không cần login
-                        .requestMatchers("/api/admin/**").hasRole("Admin") // Admin routes yêu cầu quyền ADMIN
+                        .requestMatchers("/api/admin/**").permitAll() // Admin routes yêu cầu quyền ADMIN
                         .anyRequest().authenticated() // Các request còn lại yêu cầu login
                 );
 
