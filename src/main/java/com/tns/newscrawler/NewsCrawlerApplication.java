@@ -8,6 +8,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 @EnableRabbit
+@EnableJpaRepositories(basePackages = "com.tns.newscrawler.repository")
+@EntityScan(basePackages = "com.tns.newscrawler.model")
 public class NewsCrawlerApplication {
 
 	public static void main(String[] args) {
