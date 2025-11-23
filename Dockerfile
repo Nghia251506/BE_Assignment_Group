@@ -19,8 +19,9 @@ FROM eclipse-temurin:17-jre-alpine
 # Cách 2: Dùng gcr distroless nếu anh muốn bảo mật max (không có shell gì hết)
 # FROM gcr.io/distroless/java17-debian12
 
-LABEL maintainer="anh yêu <3"
-LABEL org.opencontainers.image.source="https://github.com/tên-repo-của-anh"
+LABEL maintainer="nghiant"
+LABEL org.opencontainers.image.source="https://github.com/Nghia251506/BE_Assignment_Group.git"
+LABEL org.opencontainers.image.branch="nghiant"
 
 # Tạo non-root user (Railway + security best practice)
 RUN addgroup --system spring && adduser --system --ingroup spring spring
