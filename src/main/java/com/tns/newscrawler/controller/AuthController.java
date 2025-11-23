@@ -60,7 +60,7 @@ public class AuthController {
 
             // Set cookie với JWT token
             Cookie cookie = new Cookie("access_token", jwtToken);
-            cookie.setHttpOnly(true); // Cấm javascript truy cập cookie
+//            cookie.setHttpOnly(true); // Cấm javascript truy cập cookie
             cookie.setSecure(true); // Chỉ gửi cookie qua HTTPS
             cookie.setPath("/"); // Cookie có hiệu lực trên toàn bộ ứng dụng
             cookie.setMaxAge(7 * 24 * 60 * 60); // Cookie tồn tại trong 7 ngày
@@ -99,7 +99,7 @@ public class AuthController {
         SecurityContextHolder.clearContext();
 
         Cookie cookie = new Cookie("access_token", null);
-        cookie.setHttpOnly(true);
+//        cookie.setHttpOnly(true);
         cookie.setSecure(true);
         cookie.setPath("/");
         cookie.setMaxAge(0);

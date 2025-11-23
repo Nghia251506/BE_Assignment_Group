@@ -21,16 +21,19 @@ import com.tns.newscrawler.service.Post.PostService;
 import com.tns.newscrawler.service.Setting.SettingService;
 import com.tns.newscrawler.service.Source.SourceService;
 import com.tns.newscrawler.service.User.UserService;
+import io.swagger.annotations.Authorization;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@Secured("ADMIN")
 @RequestMapping("/api/admin")
 public class AdminController {
     private final CategoryService categoryService;
