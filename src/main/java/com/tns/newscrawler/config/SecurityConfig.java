@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,21 +46,28 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(AbstractHttpConfigurer::disable) // Tắt CSRF protection
-                .userDetailsService(customUserDetailsService) // Cấu hình dịch vụ người dùng tùy chỉnh
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**"
-                        ).permitAll() // Cho phép Swagger không cần xác thực
+                        ).permitAll()
                         .requestMatchers(
                                 "/", "/article/**", "/category/**", "/api/public/**"
-                        ).permitAll() // Các route client không yêu cầu login
-                        .requestMatchers("/api/auth/**").permitAll() // Cho phép các API auth không cần login
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // Admin routes yêu cầu quyền ADMIN
-                        .anyRequest().authenticated() // Các request còn lại yêu cầu login
+                        ).permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // Sẽ tìm ROLE_ADMIN
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 );
 
-        http.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider,customUserDetailsService), UsernamePasswordAuthenticationFilter.class);
+        // Bỏ customUserDetailsService khỏi constructor vì không cần nữa
+        http.addFilterBefore(
+                new JwtAuthenticationFilter(jwtTokenProvider),
+                UsernamePasswordAuthenticationFilter.class
+        );
+
         return http.build();
     }
 
