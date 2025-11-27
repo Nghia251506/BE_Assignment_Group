@@ -1,5 +1,6 @@
 package com.tns.newscrawler.service.Post;
 
+import ch.qos.logback.classic.Logger;
 import com.tns.newscrawler.dto.Post.*;
 import com.tns.newscrawler.entity.Category;
 import com.tns.newscrawler.entity.Post;
@@ -18,6 +19,7 @@ import org.springframework.util.StringUtils;
 import org.webjars.NotFoundException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -76,6 +78,20 @@ public class PostServiceImpl implements PostService {
         return PostMapper.toDto(savedPost);
     }
     @Override
+    public List<PostDto> findAllByDesc(){
+        List<Post> posts = postRepo.findAllByDesc();
+        return posts.stream().map(PostMapper::toDto).collect(Collectors.toList());
+    }
+    @Override
+    public void increaseViewCount(Long id) {
+        postRepo.incrementViewCount(id);
+    }
+    @Override
+    public void increaseViewCountBySlug(String slug) {
+        postRepo.findBySlug(slug)
+                .ifPresent(post -> postRepo.incrementViewCount(post.getId()));
+    }
+    @Override
     public int getArticleCountByCategorySlug(String categorySlug) {
         return postRepo.countByCategorySlug(categorySlug);
     }
@@ -89,7 +105,14 @@ public class PostServiceImpl implements PostService {
         Pageable pageable = toPageable(req.getPage(), req.getSize(), req.getSort());
         PostStatus status = req.getStatus() != null ? PostStatus.valueOf(req.getStatus()) : PostStatus.published;
         String keyword = req.getKeyword() != null ? req.getKeyword().trim() : "";
-        if (req.getCategoryId() == null && req.getSourceId() == null && keyword.isEmpty()) {
+        if ((req.getCategoryId() == null || req.getCategoryId() == 0)
+                && (req.getSourceId() == null || req.getSourceId() == 0)
+                && keyword.isEmpty()) {
+
+            return postRepo.findAllActivePublished(pageable)
+                    .map(PostMapper::toDto);
+        }
+        else if (req.getCategoryId() == null && req.getSourceId() == null && keyword.isEmpty()) {
             // Gọi findAll() nếu không có điều kiện tìm kiếm nào
             List<Post> posts = postRepo.findAll(); // Lấy tất cả bài viết
             // Tạo Page từ List
@@ -110,10 +133,34 @@ public class PostServiceImpl implements PostService {
         }
     }
 
+    @Transactional
+    public void bulkPublish(List<Long> postIds) {
+        postRepo.updateStatusByIds(postIds, PostStatus.published, DeleteStatus.Active);
+    }
+
+//    @Transactional
+//    public void bulkGenerateAndPublish(List<Long> postIds) {
+//        List<Post> posts = postRepo.findAllById(postIds);
+//        for (Post post : posts) {
+//            // Gọi hàm generate của anh (có thể reuse từ crawler hoặc AI generate)
+//            String generatedContent = generateService.generateFullContent(post);
+//            post.setContent(generatedContent);
+//            post.setContentRaw(generatedContent); // nếu cần
+//            post.setStatus(PostStatus.published);
+//            post.setPublishedAt(LocalDateTime.now());
+//        }
+//        postRepo.saveAll(posts);
+//    }
+
     @Override
     public PostDto getById(Long id) {
         Post post = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
         return PostMapper.toDto(post);
+    }
+
+    @Override
+    public Long countPosts() {
+        return  postRepo.CountPosts();
     }
 
     @Override
@@ -258,8 +305,8 @@ public class PostServiceImpl implements PostService {
         return PostMapper.toDto(savedPost);
     }
 
-    @Override
-    public PostDto generatePost(Long id) {
+    @Transactional
+    public Post generatePost(Long id) {
         Post post = postRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Post not found: " + id));
 
@@ -273,21 +320,15 @@ public class PostServiceImpl implements PostService {
 
         if (!StringUtils.hasText(post.getSummary()) && StringUtils.hasText(post.getContent())) {
             String text = post.getContent();
-            if (text.length() > 300) {
-                post.setSummary(text.substring(0, 300) + "...");
-            } else {
-                post.setSummary(text);
-            }
+            post.setSummary(text.length() > 300 ? text.substring(0, 300) + "..." : text);
             changed = true;
         }
 
         if (!StringUtils.hasText(post.getTitle()) && StringUtils.hasText(post.getSummary())) {
-            String s = post.getSummary();
-            if (s.length() > 80) {
-                post.setTitle(s.substring(0, 80) + "...");
-            } else {
-                post.setTitle(s);
-            }
+            String title = post.getSummary().length() > 80
+                    ? post.getSummary().substring(0, 80) + "..."
+                    : post.getSummary();
+            post.setTitle(title);
             changed = true;
         }
 
@@ -301,10 +342,34 @@ public class PostServiceImpl implements PostService {
             changed = true;
         }
 
-        if (changed) post.setUpdatedAt(LocalDateTime.now());
+        if (changed) {
+            post.setUpdatedAt(LocalDateTime.now());
+        }
 
-        Post savedPost = postRepo.save(post);
-        return PostMapper.toDto(savedPost);
+        return postRepo.save(post); // ← TRẢ VỀ ENTITY ĐÃ SAVE
+    }
+
+    @Transactional
+    public void bulkGenerateAndPublish(List<Long> postIds) {
+        if (postIds == null || postIds.isEmpty()) return;
+
+        List<Post> updatedPosts = new ArrayList<>();
+
+        for (Long id : postIds) {
+            try {
+                Post post = generatePost(id);  // ← REUSE 100% LOGIC
+                post.setStatus(PostStatus.published);
+                post.setPublishedAt(LocalDateTime.now());
+                post.setUpdatedAt(LocalDateTime.now());
+                updatedPosts.add(post);
+            } catch (Exception e) {
+                // Log lỗi nhưng không làm hỏng cả batch
+                Logger log = null;
+                log.warn("Không thể generate bài viết ID: " + id, e);
+            }
+        }
+
+        postRepo.saveAll(updatedPosts);
     }
 
     @Override

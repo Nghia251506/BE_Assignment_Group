@@ -25,6 +25,12 @@ public class ClientController {
         this.postService = postService;
     }
 
+    @PostMapping("/posts/{id}/view")
+    public ResponseEntity<Void> increaseView(@PathVariable Long id) {
+        postService.increaseViewCount(id);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/categories")
     public List<CategoryDto> getCategories() {
         return categoryService.getCategories();  // Đã bỏ tenantId, gọi getCategories mà không cần tenantId
