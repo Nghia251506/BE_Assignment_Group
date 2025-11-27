@@ -59,10 +59,9 @@ public class AuthController {
             String jwtToken = jwtTokenProvider.generateToken(userEntity);
 
             // Set cookie với JWT token
-            Cookie cookie = new Cookie("access_token", token);
+            Cookie cookie = new Cookie("access_token", jwtToken);
             cookie.setHttpOnly(true);
             cookie.setSecure(true);                // BẮT BUỘC KHI DÙNG HTTPS HOẶC DOMAIN
-            cookie.setSameSite("None");            // HOẶC ĐỂ "Lax" nếu không cần third-party
             cookie.setPath("/");
             cookie.setMaxAge(24 * 60 * 60);
             response.addCookie(cookie);
