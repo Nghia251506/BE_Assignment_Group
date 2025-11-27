@@ -34,7 +34,7 @@ public class SameSiteCookieFilter implements Filter {
                     String cookieHeader = cookie.getName() + "=" + cookie.getValue()
                             + "; Path=" + cookie.getPath()
                             + "; Max-Age=" + cookie.getMaxAge()
-                            + ";httpOnly=true; Secure=true; SameSite=None";
+                            + ";httpOnly=true; Secure=true; SameSite=Lax";
                     httpServletResponse.addHeader("Set-Cookie", cookieHeader);
                 }
             }
