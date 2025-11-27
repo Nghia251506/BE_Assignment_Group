@@ -64,7 +64,6 @@ public class AuthController {
             cookie.setSecure(true); // Chỉ gửi cookie qua HTTPS
             cookie.setPath("/"); // Cookie có hiệu lực trên toàn bộ ứng dụng
             cookie.setMaxAge(7 * 24 * 60 * 60); // Cookie tồn tại trong 7 ngày
-            cookie.setDomain(".muong14.xyz");
             response.addCookie(cookie);
 
             // Lấy thông tin UserDto từ service
