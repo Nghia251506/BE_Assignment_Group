@@ -79,8 +79,8 @@ public class SecurityConfig {
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:3000",
                 "http://localhost:5173",
-                "https://fe-assignment-group.vercel.app",     // FE chính của anh
-                "https://fe-assignment-group-git-*.vercel.app", // preview branches
+                "https://admin.muong14.xyz",     // FE chính của anh
+                "https://muong14.xyz"
                 "https://*.vercel.app"                         // backup
         ));
 
