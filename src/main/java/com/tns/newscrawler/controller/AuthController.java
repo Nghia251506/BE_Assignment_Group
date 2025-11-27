@@ -60,7 +60,6 @@ public class AuthController {
 
             // Set cookie với JWT token
             Cookie cookie = new Cookie("access_token", jwtToken);
-            cookie.setHttpOnly(true);
             cookie.setSecure(true);                // BẮT BUỘC KHI DÙNG HTTPS HOẶC DOMAIN
             cookie.setPath("/");
             cookie.setMaxAge(24 * 60 * 60);
