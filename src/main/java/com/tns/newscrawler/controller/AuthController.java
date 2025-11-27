@@ -59,12 +59,12 @@ public class AuthController {
             String jwtToken = jwtTokenProvider.generateToken(userEntity);
 
             // Set cookie với JWT token
-            Cookie cookie = new Cookie("access_token", jwtToken);
-//            cookie.setHttpOnly(true); // Cấm javascript truy cập cookie
-            cookie.setSecure(true); // Chỉ gửi cookie qua HTTPS
-            cookie.setPath("/"); // Cookie có hiệu lực trên toàn bộ ứng dụng
-            cookie.setMaxAge(7 * 24 * 60 * 60); // Cookie tồn tại trong 7 ngày
-            cookie.setDomain("https://admin.muong14.xyz");
+            Cookie cookie = new Cookie("access_token", token);
+            cookie.setHttpOnly(true);
+            cookie.setSecure(true);                // BẮT BUỘC KHI DÙNG HTTPS HOẶC DOMAIN
+            cookie.setSameSite("None");            // HOẶC ĐỂ "Lax" nếu không cần third-party
+            cookie.setPath("/");
+            cookie.setMaxAge(24 * 60 * 60);
             response.addCookie(cookie);
 
             // Lấy thông tin UserDto từ service
