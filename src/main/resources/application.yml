@@ -47,13 +47,13 @@ rabbit:
 jwt:
   secret-key: ${JWT_SECRET_KEY}
 
-# CORS (n?u dùng WebFlux, gi? nguyên)
+# CORS
   webflux:
     cors:
       allow-credentials: true
       allowed-origins: "*"
 
-# GA4 CONFIG ? ??P NH? ??C M?, CH?Y NGON 100%
+# GA4
 google:
   project-id: ${GA4_PROJECT_ID}
   client-email: ${GA4_CLIENT_EMAIL}
