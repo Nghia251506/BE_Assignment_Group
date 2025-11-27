@@ -81,7 +81,6 @@ public class SecurityConfig {
                 "http://localhost:5173",
                 "https://admin.muong14.xyz",     // FE chính của anh
                 "https://muong14.xyz"
-                "https://*.vercel.app"                         // backup
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
