@@ -1,11 +1,14 @@
-# src/main/resources/application.yml
+
 spring:
   application:
     name: news-crawler
+
   datasource:
-    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Bangkok&useUnicode=true&characterEncoding=UTF-8
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:news_crawler}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Bangkok&useUnicode=true&characterEncoding=UTF-8
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
   jpa:
     database-platform: org.hibernate.dialect.MySQL8Dialect
     hibernate:
@@ -17,9 +20,9 @@ spring:
     open-in-view: false
 
 server:
-  port: 8888
+  port: ${PORT:8888}
 
-# Crawler Schedule
+# Crawler schedule
 crawler:
   cron: "*/30 * * * * *"
 
@@ -33,10 +36,10 @@ springdoc:
 
 # RabbitMQ
   rabbitmq:
-    host: ${RABBITMQ_HOST}
-    port: ${RABBITMQ_PORT}
-    username: ${RABBITMQ_USERNAME}
-    password: ${RABBITMQ_PASSWORD}
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
 
 rabbit:
   exchange: news.exchange
@@ -45,15 +48,16 @@ rabbit:
 
 # JWT
 jwt:
-  secret-key: ${JWT_SECRET_KEY}
+  secret-key: ${JWT_SECRET_KEY:c0480841-a0ed-42f3-a72b-a3d38b58406e}
 
-# CORS (n?u dùng WebFlux, gi? nguyên)
-  webflux:
-    cors:
-      allow-credentials: true
-      allowed-origins: "*"
+# CORS
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
 
-# GA4 CONFIG ? ??P NH? ??C M?, CH?Y NGON 100%
+# GA4 CONFIG
 google:
   project-id: ${GA4_PROJECT_ID}
   client-email: ${GA4_CLIENT_EMAIL}
