@@ -10,7 +10,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -60,16 +59,13 @@ public class AuthController {
             String jwtToken = jwtTokenProvider.generateToken(userEntity);
 
             // Set cookie với JWT token
-            ResponseCookie cookie = ResponseCookie.from("access_token", jwtToken)
-                    .httpOnly(true)                  // BẬT LẠI DÒNG NÀY – BẮT BUỘC!
-                    .secure(true)                    // HTTPS only
-                    .sameSite("None")                // QUAN TRỌNG NHẤT – cho phép cross-site
-                    .path("/")
-                    .maxAge(7 * 24 * 60 * 60)
-                    .domain(".muong14.xyz")          // chia sẻ cookie cho cả muong14.xyz và admin.muong14.xyz
-                    .build();
-
-            response.addHeader("Set-Cookie", cookie.toString());
+            Cookie cookie = new Cookie("access_token", jwtToken);
+//            cookie.setHttpOnly(true); // Cấm javascript truy cập cookie
+            cookie.setSecure(true); // Chỉ gửi cookie qua HTTPS
+            cookie.setPath("/"); // Cookie có hiệu lực trên toàn bộ ứng dụng
+            cookie.setMaxAge(7 * 24 * 60 * 60); // Cookie tồn tại trong 7 ngày
+            cookie.setDomain(".muong14.xyz");
+            response.addCookie(cookie);
 
             // Lấy thông tin UserDto từ service
             UserDto userDto = userService.getByUsername(username);
@@ -103,16 +99,12 @@ public class AuthController {
     public ResponseEntity<String> logout(HttpServletResponse response) {
         SecurityContextHolder.clearContext();
 
-        ResponseCookie cookie = ResponseCookie.from("access_token", null)
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("None")
-                .path("/")
-                .maxAge(0)
-                .domain(".muong14.xyz")
-                .build();
-
-        response.addHeader("Set-Cookie", cookie.toString());
+        Cookie cookie = new Cookie("access_token", null);
+//        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
 
         return ResponseEntity.ok("Đăng xuất thành công");
     }
