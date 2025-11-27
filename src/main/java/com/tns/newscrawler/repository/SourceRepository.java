@@ -19,4 +19,6 @@ public interface SourceRepository extends JpaRepository<Source, Long> {
 
     // Để tránh trùng, nếu em muốn kiểm tra theo list_url
     boolean existsByListUrl(String listUrl);
+    @Query("SELECT COUNT(s) FROM Source s WHERE s.isActive = true")
+    Long CountSources();
 }

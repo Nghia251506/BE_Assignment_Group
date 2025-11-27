@@ -1,5 +1,8 @@
 package com.tns.newscrawler.controller;
 
+import com.google.analytics.data.v1beta.*;
+import com.google.api.gax.core.FixedCredentialsProvider;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.tns.newscrawler.dto.Category.CategoryCreateRequest;
 import com.tns.newscrawler.dto.Category.CategoryDto;
 import com.tns.newscrawler.dto.Category.CategoryUpdateRequest;
@@ -13,7 +16,10 @@ import com.tns.newscrawler.dto.User.UserUpdateRequest;
 import com.tns.newscrawler.entity.Category;
 import com.tns.newscrawler.entity.Post;
 import com.tns.newscrawler.entity.Setting;
-import com.tns.newscrawler.repository.SettingRepository;
+import com.tns.newscrawler.mapper.Post.PostMapper;
+import com.tns.newscrawler.repository.CategoryRepository;
+import com.tns.newscrawler.repository.PostRepository;
+import com.tns.newscrawler.repository.SourceRepository;
 import com.tns.newscrawler.service.Category.CategoryService;
 import com.tns.newscrawler.service.Crawler.ContentCrawlerService;
 import com.tns.newscrawler.service.Crawler.LinkCrawlerService;
@@ -21,16 +27,16 @@ import com.tns.newscrawler.service.Post.PostService;
 import com.tns.newscrawler.service.Setting.SettingService;
 import com.tns.newscrawler.service.Source.SourceService;
 import com.tns.newscrawler.service.User.UserService;
-import io.swagger.annotations.Authorization;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.*;
+import com.google.analytics.data.v1beta.BetaAnalyticsDataSettings;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 @RestController
 @Secured("ADMIN")
@@ -43,12 +49,17 @@ public class AdminController {
     private final SourceService sourceService;
     private final UserService userService;
     private final SettingService SettingService;
+    private final PostRepository postRepo;
+    private final SourceRepository sourceRepo;
+    private final CategoryRepository catRepo;
+    private static final String PROPERTY_ID = "514447198";
+
 
     public AdminController(CategoryService categoryService,
                            LinkCrawlerService linkCrawlerService,
                            ContentCrawlerService contentCrawlerService,
                            PostService postService, SourceService sourceService,
-                           UserService userService, SettingService settingService) {
+                           UserService userService, SettingService settingService, PostRepository postRepo, SourceRepository sourceRepo, CategoryRepository catyRepo) {
         this.categoryService = categoryService;
         this.linkCrawlerService = linkCrawlerService;
         this.contentCrawlerService = contentCrawlerService;
@@ -57,6 +68,9 @@ public class AdminController {
         this.userService = userService;
 
         SettingService = settingService;
+        this.postRepo = postRepo;
+        this.sourceRepo = sourceRepo;
+        this.catRepo = catyRepo;
     }
 
     // Category
@@ -144,15 +158,32 @@ public class AdminController {
         return ResponseEntity.ok(postDto);
     }
 
+    @PostMapping("/posts/{id}/view")
+    public ResponseEntity<Void> increaseView(@PathVariable Long id) {
+        postService.increaseViewCount(id);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/posts")
     public ResponseEntity<PostDto> createPost(@RequestBody PostCreateRequest req) {
         PostDto postDto = postService.create(req);
         return ResponseEntity.ok(postDto);
     }
+
     @PostMapping("/posts/{id}/generate")
-    public ResponseEntity<PostDto> generatePost(@PathVariable Long id){
-        PostDto postDto = postService.generatePost(id);
+    public ResponseEntity<Post> generatePost(@PathVariable Long id) {
+        Post postDto = postService.generatePost(id);
         return ResponseEntity.ok(postDto);
+    }
+
+    @PostMapping("/posts/bulk-action")
+    public ResponseEntity<?> bulkActionPost(@RequestBody PostBulkActionRequest req) {
+        if ("publish".equals(req.getAction())) {
+            postService.bulkPublish(req.getPostIds());
+        } else if ("generate".equals(req.getAction())) {
+            postService.bulkGenerateAndPublish(req.getPostIds()); // hoặc tách riêng
+        }
+        return ResponseEntity.ok("Thao tác thành công với " + req.getPostIds().size() + " bài viết");
     }
 
     @PutMapping("/posts/{id}")
@@ -173,13 +204,66 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/today-stats")
+    public ResponseEntity<Map<String, Long>> getTodayStats() {
+        try (BetaAnalyticsDataClient client = BetaAnalyticsDataClient.create(betaSettings())) { // ← DÙNG THUẦN TÚY
+
+            RunReportRequest request = RunReportRequest.newBuilder()
+                    .setProperty("properties/" + PROPERTY_ID)
+                    .addDateRanges(DateRange.newBuilder().setStartDate("today").setEndDate("today").build())
+                    .addMetrics(Metric.newBuilder().setName("screenPageViews").build())
+                    .addMetrics(Metric.newBuilder().setName("activeUsers").build())
+                    .build();
+
+            RunReportResponse response = client.runReport(request);
+
+            long todayViews = response.getRowsCount() > 0
+                    ? Long.parseLong(response.getRows(0).getMetricValues(0).getValue()) : 0L;
+            long todayUsers = response.getRowsCount() > 0
+                    ? Long.parseLong(response.getRows(0).getMetricValues(1).getValue()) : 0L;
+
+            return ResponseEntity.ok(Map.of("todayViews", todayViews, "todayUsers", todayUsers));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.ok(Map.of("todayViews", 0L, "todayUsers", 0L));
+        }
+    }
+
+    private BetaAnalyticsDataSettings betaSettings() {
+        return null;
+    }
+
+    @GetMapping("/stats")
+    public Map<String, Object> getStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalPosts", postRepo.CountPosts());
+        stats.put("totalCategories", catRepo.CountCat());
+        stats.put("totalSources", sourceRepo.CountSources());
+        stats.put("todayUsers", 1247); // tạm hardcode hoặc lấy từ GA4
+        stats.put("totalUsers7d", 48392);
+        return stats;
+    }
+
+    @GetMapping("/posts/recent")
+    public ResponseEntity<List<PostDto>> getRecentPosts() {
+        List<Post> posts = postRepo.getTop5Recent();
+
+        List<PostDto> dtos = posts.stream()
+                .map(PostMapper::toDto)  // hoặc new PostRecentDto(post)
+                .toList();
+
+        return ResponseEntity.ok(dtos);
+    }
+
     @GetMapping("/categories/{slug}/posts-count")
     public int getArticleCountByCategorySlug(@PathVariable String slug) {
         return postService.getArticleCountByCategorySlug(slug);
     }
+
     @GetMapping("/sources/{id}/posts-count")
-    public int getArticleCountBySourceId(@PathVariable Long sourceId) {
-        return postService.getArticleCountBySourceId(sourceId);
+    public int getArticleCountBySourceId(@PathVariable Long id) {
+        return postService.getArticleCountBySourceId(id);
     }
 
     @GetMapping("/posts/filter")
@@ -260,13 +344,65 @@ public class AdminController {
 
     // Cập nhật cài đặt SEO và Auto-Crawler
     @PutMapping("/settings")
-    public ResponseEntity<Setting> updateSettings(Long Id,@RequestBody Setting setting) {
-        Setting updatedSetting = SettingService.updateSettings(Id,setting);
+    public ResponseEntity<Setting> updateSettings(Long Id, @RequestBody Setting setting) {
+        Setting updatedSetting = SettingService.updateSettings(Id, setting);
         return ResponseEntity.ok(updatedSetting);
     }
+
     @PostMapping("/settings")
     public ResponseEntity<Setting> createSetting(@RequestBody Setting setting) {
         Setting createdSetting = SettingService.createSetting(setting);
         return ResponseEntity.ok(createdSetting);
+    }
+
+    //Ga4
+    @GetMapping("/weekly-users")
+    public ResponseEntity<List<Map<String, Object>>> getWeeklyUsers() throws Exception {
+        // Đọc key từ resources
+        GoogleCredentials credentials = GoogleCredentials
+                .fromStream(new ClassPathResource("ga4-key.json").getInputStream())
+                .createScoped("https://www.googleapis.com/auth/analytics.readonly");
+
+        // FIXED CREDENTIALS PROVIDER – BẮT BUỘC CHO BẢN 0.16.0
+        FixedCredentialsProvider fixedCredentialsProvider = FixedCredentialsProvider.create(credentials);
+
+        // BETA SETTINGS + CLIENT – CHUẨN CHO 0.16.0
+        BetaAnalyticsDataSettings settings = BetaAnalyticsDataSettings.newBuilder()
+                .setCredentialsProvider(fixedCredentialsProvider)
+                .build();
+
+        try (BetaAnalyticsDataClient client = BetaAnalyticsDataClient.create(settings)) {
+            RunReportRequest request = RunReportRequest.newBuilder()
+                    .setProperty("properties/" + PROPERTY_ID)
+                    .addDateRanges(DateRange.newBuilder()
+                            .setStartDate("7daysAgo")
+                            .setEndDate("today")
+                            .build())
+                    .addDimensions(Dimension.newBuilder().setName("date").build())
+                    .addMetrics(Metric.newBuilder().setName("activeUsers").build())
+                    .build();
+
+            RunReportResponse response = client.runReport(request);
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            String[] dayNames = {"CN", "T2", "T3", "T4", "T5", "T6", "T7"};
+
+            for (Row row : response.getRowsList()) {
+                String dateStr = row.getDimensionValues(0).getValue();
+                LocalDate date = LocalDate.parse(dateStr, DateTimeFormatter.BASIC_ISO_DATE);
+                int dayIndex = (date.getDayOfWeek().getValue() % 7);
+                String dayName = dayNames[dayIndex];
+                int users = Integer.parseInt(row.getMetricValues(0).getValue());
+
+                result.add(Map.of("name", dayName, "users", users));
+            }
+
+            result.sort((a, b) -> Integer.compare(
+                    Arrays.asList(dayNames).indexOf(a.get("name")),
+                    Arrays.asList(dayNames).indexOf(b.get("name"))
+            ));
+
+            return ResponseEntity.ok(result);
+        }
     }
 }
