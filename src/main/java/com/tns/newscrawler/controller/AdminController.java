@@ -3,6 +3,7 @@ package com.tns.newscrawler.controller;
 import com.google.analytics.data.v1beta.*;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.tns.newscrawler.config.Ga4Config;
 import com.tns.newscrawler.dto.Category.CategoryCreateRequest;
 import com.tns.newscrawler.dto.Category.CategoryDto;
 import com.tns.newscrawler.dto.Category.CategoryUpdateRequest;
@@ -27,6 +28,7 @@ import com.tns.newscrawler.service.Post.PostService;
 import com.tns.newscrawler.service.Setting.SettingService;
 import com.tns.newscrawler.service.Source.SourceService;
 import com.tns.newscrawler.service.User.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -354,31 +356,25 @@ public class AdminController {
         Setting createdSetting = SettingService.createSetting(setting);
         return ResponseEntity.ok(createdSetting);
     }
-
+    @Autowired
+    private GoogleCredentials googleCredentials;
     //Ga4
     @GetMapping("/weekly-users")
     public ResponseEntity<List<Map<String, Object>>> getWeeklyUsers() throws Exception {
-        // Đọc key từ resources
-        GoogleCredentials credentials = GoogleCredentials
-                .fromStream(new ClassPathResource("ga4-key.json").getInputStream())
-                .createScoped("https://www.googleapis.com/auth/analytics.readonly");
 
-        // FIXED CREDENTIALS PROVIDER – BẮT BUỘC CHO BẢN 0.16.0
-        FixedCredentialsProvider fixedCredentialsProvider = FixedCredentialsProvider.create(credentials);
-
-        // BETA SETTINGS + CLIENT – CHUẨN CHO 0.16.0
         BetaAnalyticsDataSettings settings = BetaAnalyticsDataSettings.newBuilder()
-                .setCredentialsProvider(fixedCredentialsProvider)
+                .setCredentialsProvider(FixedCredentialsProvider.create(googleCredentials))
                 .build();
 
         try (BetaAnalyticsDataClient client = BetaAnalyticsDataClient.create(settings)) {
             RunReportRequest request = RunReportRequest.newBuilder()
-                    .setProperty("properties/" + PROPERTY_ID)
+                    .setProperty("properties/" + "514447198")  // hoặc ga4Config.getPropertyId()
                     .addDateRanges(DateRange.newBuilder()
                             .setStartDate("7daysAgo")
                             .setEndDate("today")
                             .build())
-                    .addDimensions(Dimension.newBuilder().setName("date").build())
+                    // SAI TRƯỚC ĐÂY → ĐÚNG BÂY GIỜ:
+                    .addDimensions(Dimension.newBuilder().setName("date").build())           // chỉ 1 lần
                     .addMetrics(Metric.newBuilder().setName("activeUsers").build())
                     .build();
 
@@ -388,21 +384,24 @@ public class AdminController {
             String[] dayNames = {"CN", "T2", "T3", "T4", "T5", "T6", "T7"};
 
             for (Row row : response.getRowsList()) {
-                String dateStr = row.getDimensionValues(0).getValue();
+                String dateStr = row.getDimensionValues(0).getValue(); // "20251120"
                 LocalDate date = LocalDate.parse(dateStr, DateTimeFormatter.BASIC_ISO_DATE);
-                int dayIndex = (date.getDayOfWeek().getValue() % 7);
-                String dayName = dayNames[dayIndex];
-                int users = Integer.parseInt(row.getMetricValues(0).getValue());
+                int dayIndex = date.getDayOfWeek().getValue() % 7; // 1=Mon → 0, 7=Sun → 6
+                String dayName = dayNames[dayIndex == 0 ? 6 : dayIndex - 1];
+
+                // SAI TRƯỚC ĐÂY → ĐÚNG BÂY GIỜ:
+                String valueStr = row.getMetricValues(0).getValue();   // trả về String
+                long users = valueStr == null || valueStr.isEmpty() ? 0 : Long.parseLong(valueStr);
 
                 result.add(Map.of("name", dayName, "users", users));
             }
 
-            result.sort((a, b) -> Integer.compare(
-                    Arrays.asList(dayNames).indexOf(a.get("name")),
-                    Arrays.asList(dayNames).indexOf(b.get("name"))
-            ));
+            // Sắp xếp từ CN → T7
+            result.sort(Comparator.comparingInt(m -> Arrays.asList(dayNames).indexOf(m.get("name"))));
 
             return ResponseEntity.ok(result);
         }
     }
 }
+
+
