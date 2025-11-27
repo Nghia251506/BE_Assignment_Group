@@ -4,7 +4,6 @@ import lombok.Data;
 
 @Data
 public class SourceCreateRequest {
-    private Long tenantId;
     private Long categoryId;
     private String name;
     private String baseUrl;

@@ -3,7 +3,6 @@ import lombok.Data;
 
 @Data
 public class PostSearchRequest {
-    private Long tenantId;       // bắt buộc
     private Long categoryId;     // optional
     private Long sourceId;       // optional
     private String keyword;      // search theo title

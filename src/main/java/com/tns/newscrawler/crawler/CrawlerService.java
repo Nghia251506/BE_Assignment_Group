@@ -26,10 +26,10 @@ public class CrawlerService {
         this.postService = postService;
     }
 
-    /** Chạy 1 lượt cho tenant → trả về số bài đã upsert */
+    /** Chạy 1 lượt cho tất cả nguồn đang active → trả về số bài đã upsert */
     @Transactional(readOnly = true)
-    public int crawlTenantOnce(Long tenantId, boolean checkExistBeforeUpsert) {
-        List<Source> sources = sourceRepo.findByTenant_IdAndIsActiveTrue(tenantId);
+    public int crawlOnce(boolean checkExistBeforeUpsert) {
+        List<Source> sources = sourceRepo.findByIsActiveTrue();  // Bỏ tenantId
         int total = 0;
         for (Source s : sources) {
             total += crawlOneSource(s, checkExistBeforeUpsert);
@@ -83,7 +83,6 @@ public class CrawlerService {
 
                 // 5) lưu DB (pending) – dùng upsertByOrigin cho an toàn
                 PostCreateRequest req = new PostCreateRequest();
-                req.setTenantId(s.getTenant().getId());
                 req.setSourceId(s.getId());
                 req.setCategoryId(s.getCategory().getId());
                 req.setOriginUrl(url);
@@ -104,6 +103,7 @@ public class CrawlerService {
             String schemeHost = list.getScheme() + "://" + list.getHost();
             String path = list.getPath(); // vd: /thoi-su, /the-thao/bong-da
             if (path == null || path.isBlank() || "/".equals(path)) return schemeHost + "/";
+
             // lấy segment gốc (vd: /thoi-su/)
             String[] segs = path.split("/");
             if (segs.length >= 1) {

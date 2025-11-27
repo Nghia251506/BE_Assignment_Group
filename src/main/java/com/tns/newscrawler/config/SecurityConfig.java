@@ -1,29 +1,40 @@
 package com.tns.newscrawler.config;
 
+import com.tns.newscrawler.security.JwtAuthenticationFilter;
+import com.tns.newscrawler.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+
+import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
-
+    private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService customUserDetailsService;
+    private final Environment environment;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // Cho phép inject AuthenticationManager nếu cần dùng trong AuthController
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration config
@@ -31,63 +42,55 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//        http
-//                .csrf(AbstractHttpConfigurer::disable)
-//                .userDetailsService(customUserDetailsService)
-//                .authorizeHttpRequests(auth -> auth
-//                        // cho phép public mấy route client
-//                        .requestMatchers(
-//                                "/swagger-ui.html",
-//                                "/swagger-ui/index.html/**",
-//                                "/v3/api-docs/**",      // Đảm bảo API docs không yêu cầu login
-//                                "/swagger-resources/**", // Tài nguyên Swagger UI
-//                                "/webjars/**"           // Tài nguyên Swagger UI
-//                        ).permitAll()
-//                        .requestMatchers(
-//                                "/",
-//                                "/article/**",
-//                                "/category/**",
-//                                "/api/public/**",
-//                                "/api/admin/posts",
-//                                "/api/admin/categories/tenant/1"
-//                        ).permitAll()
-//
-//                        // cho phép login/logout
-//                        .requestMatchers("/api/auth/**").permitAll()
-//
-//                        // admin
-//                        .requestMatchers("/api/admin/**").permitAll()
-//
-//                        // còn lại phải login
-//                        .anyRequest().authenticated()
-//                )
-//                // Dùng formLogin hoặc httpBasic, tuỳ anh
-//                .httpBasic(basic -> {})  // → test Postman cho dễ
-//                .formLogin(form -> form
-//                        .loginPage("/login")       // nếu anh có trang login custom
-//                        .permitAll()
-//                )
-//                .logout(logout -> logout
-//                        .logoutUrl("/logout")
-//                        .permitAll()
-//                );
-//
-//        return http.build();
-//    }
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf().disable()  // Tắt CSRF protection
-                .authorizeRequests()
-                .requestMatchers("/**").permitAll()  // Thay thế antMatchers bằng requestMatchers
-                .anyRequest().permitAll()     // Bỏ qua tất cả các yêu cầu bảo mật
-                .and()
-                .formLogin().disable() // Nếu đang sử dụng formLogin thì tắt nó
-                .httpBasic().disable(); // Tắt HTTP Basic authentication
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**"
+                        ).permitAll()
+                        .requestMatchers(
+                                "/", "/article/**", "/category/**", "/api/public/**","/api/dev/rebuild-redis"
+                        ).permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // Sẽ tìm ROLE_ADMIN
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                );
+
+        // Bỏ customUserDetailsService khỏi constructor vì không cần nữa
+        http.addFilterBefore(
+                new JwtAuthenticationFilter(jwtTokenProvider),
+                UsernamePasswordAuthenticationFilter.class
+        );
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+
+        // KHÔNG BAO GIỜ được để "*" khi allowCredentials(true)
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "https://fe-assignment-group.vercel.app",     // FE chính của anh
+                "https://fe-assignment-group-git-*.vercel.app", // preview branches
+                "https://*.vercel.app"                         // backup
+        ));
+
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Set-Cookie"));
+        config.setAllowCredentials(true); // quan trọng nhất
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }

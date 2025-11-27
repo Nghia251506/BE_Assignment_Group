@@ -8,9 +8,7 @@ import java.util.List;
 
 public interface SourceService {
 
-    List<SourceDto> getByTenant(Long tenantId);
-
-    List<SourceDto> getActiveByTenant(Long tenantId);
+    List<SourceDto> getActiveByTenant();  // Đã bỏ tenant, lấy tất cả active sources
 
     SourceDto getById(Long id);
 
@@ -20,6 +18,6 @@ public interface SourceService {
 
     void delete(Long id);
 
-    // cho crawler lấy tất cả nguồn active
+    // Lấy tất cả nguồn active
     List<SourceDto> getAllActive();
 }

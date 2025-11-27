@@ -4,7 +4,6 @@ import lombok.Data;
 
 @Data
 public class UserCreateRequest {
-    private Long tenantId;      // bắt buộc vì mình tạo user theo tenant
     private String username;
     private String password;    // sẽ hash lưu vào password_hash
     private String fullName;

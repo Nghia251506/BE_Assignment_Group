@@ -20,11 +20,6 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // liên kết với tenant
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
-
     @Column(nullable = false, unique = true, length = 100)
     private String username;
 
@@ -48,12 +43,14 @@ public class User {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-    @ManyToOne(fetch = FetchType.LAZY)
+
+    // Role relationship - now without tenant
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id")
     private Role role;
 
     // ================== PERMISSION ==================
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_permission",
             joinColumns = @JoinColumn(name = "user_id"),               // FK tới users.id

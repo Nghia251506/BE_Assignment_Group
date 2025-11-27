@@ -6,24 +6,27 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "tags",
-        indexes = @Index(name="idx_tags_tenant", columnList = "tenant_id"))
+@Table(name = "tags")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Tag {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // multi-tenant
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
-
     @Column(nullable = false, length = 100)
     private String name;
 
     @Column(length = 120)
     private String slug;
+
+    @Column(name = "seo_title", length = 255)
+    private String seoTitle;
+
+    @Column(name = "seo_description", length = 500)
+    private String seoDescription;
+
+    @Column(name = "seo_keywords", length = 500)
+    private String seoKeywords;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

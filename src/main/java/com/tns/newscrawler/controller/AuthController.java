@@ -3,9 +3,13 @@ package com.tns.newscrawler.controller;
 import com.tns.newscrawler.dto.User.UserDto;
 import com.tns.newscrawler.dto.Auth.LoginRequest;
 import com.tns.newscrawler.entity.User;
-import com.tns.newscrawler.mapper.User.UserMapper;
 import com.tns.newscrawler.service.User.UserServiceImpl;
+import com.tns.newscrawler.security.JwtTokenProvider;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -20,38 +24,87 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
-    private final UserServiceImpl userService; // hoặc UserService nếu anh thêm method vào interface
+    private final UserServiceImpl userService;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final Environment environment;
 
     @PostMapping("/login")
-    public ResponseEntity<UserDto> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         try {
-            Authentication authToken =
-                    new UsernamePasswordAuthenticationToken(
-                            request.getUsername(), request.getPassword());
+            // Kiểm tra thông tin đăng nhập
+            if (loginRequest.getUsername() == null || loginRequest.getPassword() == null) {
+                return ResponseEntity.status(400).body("Tên đăng nhập và mật khẩu không được để trống");
+            }
 
-            Authentication auth = authenticationManager.authenticate(authToken);
+            // Thực hiện xác thực người dùng
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
+            );
 
-            SecurityContextHolder.getContext().setAuthentication(auth);
+            // Đặt Authentication vào SecurityContext
+            SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            User user = userService.getDomainUserByUsername(request.getUsername());
-            return ResponseEntity.ok(UserMapper.toDto(user));
-        } catch (BadCredentialsException ex) {
-            return ResponseEntity.status(401).build();
+            // Lấy thông tin username từ authentication
+            String username = authentication.getName();
+
+            // Lấy thông tin User từ database
+            com.tns.newscrawler.entity.User userEntity = userService.findByUsername(username);
+
+            // Kiểm tra nếu không tìm thấy user trong DB
+            if (userEntity == null) {
+                return ResponseEntity.status(404).body("User không tồn tại");
+            }
+
+            // Tạo JWT token cho user đã đăng nhập
+            String jwtToken = jwtTokenProvider.generateToken(userEntity);
+
+            // Set cookie với JWT token
+            Cookie cookie = new Cookie("access_token", jwtToken);
+//            cookie.setHttpOnly(true); // Cấm javascript truy cập cookie
+            cookie.setSecure(true); // Chỉ gửi cookie qua HTTPS
+            cookie.setPath("/"); // Cookie có hiệu lực trên toàn bộ ứng dụng
+            cookie.setMaxAge(7 * 24 * 60 * 60); // Cookie tồn tại trong 7 ngày
+            response.addCookie(cookie);
+
+            // Lấy thông tin UserDto từ service
+            UserDto userDto = userService.getByUsername(username);
+
+            // Trả về UserDto cùng với mã trạng thái 200 OK
+            return ResponseEntity.ok(userDto);
+
+        } catch (BadCredentialsException e) {
+            // Xử lý khi thông tin đăng nhập sai
+            return ResponseEntity.status(401).body("Sai tên đăng nhập hoặc mật khẩu");
+        } catch (Exception e) {
+            // Xử lý lỗi chung
+            return ResponseEntity.status(500).body("Lỗi hệ thống: " + e.getMessage());
         }
     }
+
 
     @GetMapping("/me")
-    public ResponseEntity<UserDto> me() {
-        UserDto current = userService.getCurrentUser();
-        if (current == null) {
-            return ResponseEntity.status(401).build();
+    public ResponseEntity<UserDto> me(Authentication authentication) {
+        if (authentication != null && authentication.isAuthenticated()) {
+            String username = authentication.getName();
+            UserDto userDto = userService.getByUsername(username);
+            return ResponseEntity.ok(userDto);
         }
-        return ResponseEntity.ok(current);
+        return ResponseEntity.status(401).build();
     }
 
+
+
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
-        SecurityContextHolder.clearContext(); // nếu dùng session, FE gọi thêm /logout của Spring cũng được
-        return ResponseEntity.ok().build();
+    public ResponseEntity<String> logout(HttpServletResponse response) {
+        SecurityContextHolder.clearContext();
+
+        Cookie cookie = new Cookie("access_token", null);
+//        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+
+        return ResponseEntity.ok("Đăng xuất thành công");
     }
 }

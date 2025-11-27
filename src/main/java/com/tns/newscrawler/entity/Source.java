@@ -1,5 +1,6 @@
 package com.tns.newscrawler.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,14 +19,10 @@ public class Source {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ---- tenant ----
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant;
-
     // ---- category ----
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
+    @JsonIgnore
     private Category category;
 
     // tên hiển thị cho admin

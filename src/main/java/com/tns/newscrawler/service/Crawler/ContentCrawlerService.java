@@ -33,17 +33,12 @@ public class ContentCrawlerService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
 
-        // dùng lại logic crawl 1 bài
         crawlOnePostContent(post);
 
-        // update status, save
-        post.setStatus(Post.PostStatus.draft); // hoặc published
+        post.setStatus(Post.PostStatus.draft);
         postRepository.save(post);
     }
 
-    /**
-     * Crawl content cho các post pending của 1 source (giới hạn limit post)
-     */
     @Transactional
     public int crawlPendingBySource(Long sourceId, int limit) {
         Page<Post> page = postRepository.findBySource_IdAndStatus(
@@ -56,16 +51,14 @@ public class ContentCrawlerService {
             return 0;
         }
 
-// ✅ dùng get(0) vì đã check isEmpty ở trên
         Post first = page.getContent().get(0);
         Source source = first.getSource();
 
         LocalDateTime start = LocalDateTime.now();
         CrawlLog logEntity = CrawlLog.builder()
-                .tenant(source.getTenant())
                 .source(source)
                 .crawlType(CrawlLog.CrawlType.CONTENT)
-                .triggeredBy(CrawlLog.TriggeredBy.MANUAL) // nếu là job thì đổi SCHEDULED
+                .triggeredBy(CrawlLog.TriggeredBy.MANUAL)
                 .status(CrawlLog.CrawlStatus.SUCCESS)
                 .startedAt(start)
                 .totalFound(page.getNumberOfElements())
@@ -78,13 +71,12 @@ public class ContentCrawlerService {
         for (Post post : page.getContent()) {
             try {
                 crawlOnePostContent(post);
-                post.setStatus(Post.PostStatus.draft); // hoặc published tuỳ rule
+                post.setStatus(Post.PostStatus.draft);
                 postRepository.save(post);
                 success++;
             } catch (Exception e) {
                 log.error("[ContentCrawler] Error crawl content for post id={} url={}: {}",
                         post.getId(), post.getOriginUrl(), e.getMessage(), e);
-                // gom lỗi ngắn gọn vào log
                 errorBuilder.append("postId=")
                         .append(post.getId())
                         .append(": ")
@@ -93,7 +85,7 @@ public class ContentCrawlerService {
             }
         }
 
-        logEntity.setTotalInserted(success); // tái dùng field này = số post crawl thành công
+        logEntity.setTotalInserted(success);
         if (success == page.getNumberOfElements()) {
             logEntity.setStatus(CrawlLog.CrawlStatus.SUCCESS);
         } else if (success == 0) {
@@ -114,9 +106,6 @@ public class ContentCrawlerService {
         return success;
     }
 
-    /**
-     * Crawl content cho 1 post (dùng originUrl + selector trong Source)
-     */
     private void crawlOnePostContent(Post post) throws Exception {
         Source source = post.getSource();
         if (source == null) {
@@ -132,7 +121,6 @@ public class ContentCrawlerService {
                 .timeout(10000)
                 .get();
 
-        // --- TITLE ---
         String title = null;
         if (StringUtils.hasText(source.getTitleSelector())) {
             Elements els = doc.select(source.getTitleSelector());
@@ -141,7 +129,6 @@ public class ContentCrawlerService {
             }
         }
 
-        // --- CONTENT RAW (HTML) ---
         String contentHtml = null;
         if (StringUtils.hasText(source.getContentSelector())) {
             Elements els = doc.select(source.getContentSelector());
@@ -154,27 +141,19 @@ public class ContentCrawlerService {
             }
         }
 
-        // --- THUMBNAIL ---
         String thumbnail = null;
         if (StringUtils.hasText(source.getThumbnailSelector())) {
             Element img = doc.select(source.getThumbnailSelector()).first();
             if (img != null) {
                 String rawSrc = null;
-
-                // Ưu tiên data-src (rất hay dùng cho lazy-load)
                 if (img.hasAttr("data-src")) {
                     rawSrc = img.attr("data-src");
-                }
-                // fallback qua data-original (một số site dùng)
-                else if (img.hasAttr("data-original")) {
+                } else if (img.hasAttr("data-original")) {
                     rawSrc = img.attr("data-original");
-                }
-                // nếu không có thì dùng src bình thường
-                else if (img.hasAttr("src")) {
+                } else if (img.hasAttr("src")) {
                     rawSrc = img.attr("src");
                 }
 
-                // Chuẩn hoá lại thành absolute URL (https://...)
                 thumbnail = normalizeUrl(rawSrc, source.getBaseUrl());
             }
         }
@@ -183,7 +162,6 @@ public class ContentCrawlerService {
             post.setThumbnail(thumbnail);
         }
 
-        // --- AUTHOR ---
         String author = null;
         if (StringUtils.hasText(source.getAuthorSelector())) {
             Elements els = doc.select(source.getAuthorSelector());
@@ -192,7 +170,6 @@ public class ContentCrawlerService {
             }
         }
 
-        // --- SUMMARY (text, cắt ngắn) ---
         String summary = null;
         String contentText = null;
         if (contentHtml != null) {
@@ -204,13 +181,11 @@ public class ContentCrawlerService {
             }
         }
 
-        // Gán vào Post
         if (StringUtils.hasText(title)) {
             post.setTitle(title);
         }
         if (contentHtml != null) {
             post.setContentRaw(contentHtml);
-            // tuỳ em: content = HTML sạch hoặc text, ở đây anh để text
             post.setContent(contentText);
         }
         if (StringUtils.hasText(thumbnail)) {
@@ -219,17 +194,12 @@ public class ContentCrawlerService {
         if (StringUtils.hasText(summary)) {
             post.setSummary(summary);
         }
-        // author hiện chưa có field riêng trong Post, nếu em muốn thì thêm cột sau
 
-        // có thể set publishedAt = now() nếu muốn
         if (post.getPublishedAt() == null) {
             post.setPublishedAt(LocalDateTime.now());
         }
     }
 
-    /**
-     * Reuse normalize URL giống link crawler
-     */
     private String normalizeUrl(String href, String baseUrl) {
         try {
             if (!StringUtils.hasText(href)) return null;

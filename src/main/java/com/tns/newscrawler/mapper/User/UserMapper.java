@@ -13,7 +13,6 @@ public class UserMapper {
 
         UserDto dto = new UserDto();
         dto.setId(user.getId());
-        dto.setTenantId(user.getTenant() != null ? user.getTenant().getId() : null);
         dto.setUsername(user.getUsername());
         dto.setFullName(user.getFullName());
         dto.setEmail(user.getEmail());

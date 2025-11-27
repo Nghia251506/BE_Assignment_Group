@@ -5,20 +5,12 @@ import com.tns.newscrawler.dto.Source.SourceDto;
 import com.tns.newscrawler.dto.Source.SourceUpdateRequest;
 import com.tns.newscrawler.entity.Category;
 import com.tns.newscrawler.entity.Source;
-import com.tns.newscrawler.entity.Tenant;
 import com.tns.newscrawler.mapper.Source.SourceMapper;
 import com.tns.newscrawler.repository.CategoryRepository;
 import com.tns.newscrawler.repository.SourceRepository;
-import com.tns.newscrawler.repository.TenantRepository;
-import com.tns.newscrawler.service.Source.SourceService;
-import org.jsoup.Jsoup;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-
-import java.util.HashSet;
 import java.util.List;
 
 @Service
@@ -26,28 +18,18 @@ import java.util.List;
 public class SourceServiceImpl implements SourceService {
 
     private final SourceRepository sourceRepository;
-    private final TenantRepository tenantRepository;
     private final CategoryRepository categoryRepository;
 
     public SourceServiceImpl(SourceRepository sourceRepository,
-                             TenantRepository tenantRepository,
                              CategoryRepository categoryRepository) {
         this.sourceRepository = sourceRepository;
-        this.tenantRepository = tenantRepository;
         this.categoryRepository = categoryRepository;
     }
 
     @Override
-    public List<SourceDto> getByTenant(Long tenantId) {
-        return sourceRepository.findByTenantIdWithCategory(tenantId)
-                .stream()
-                .map(SourceMapper::toDto)
-                .toList();
-    }
-
-    @Override
-    public List<SourceDto> getActiveByTenant(Long tenantId) {
-        return sourceRepository.findByTenant_IdAndIsActiveTrue(tenantId)
+    public List<SourceDto> getActiveByTenant() {
+        // Lấy tất cả nguồn active
+        return sourceRepository.findByIsActiveTrue()
                 .stream()
                 .map(SourceMapper::toDto)
                 .toList();
@@ -62,19 +44,15 @@ public class SourceServiceImpl implements SourceService {
 
     @Override
     public SourceDto create(SourceCreateRequest req) {
-        Tenant tenant = tenantRepository.findById(req.getTenantId())
-                .orElseThrow(() -> new RuntimeException("Tenant not found"));
-
         Category category = categoryRepository.findById(req.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        // nếu muốn tránh trùng list_url trong cùng tenant
-        if (sourceRepository.existsByTenant_IdAndListUrl(tenant.getId(), req.getListUrl())) {
-            throw new RuntimeException("This list url already exists in this tenant");
+        // Check nếu list_url đã tồn tại trong DB
+        if (sourceRepository.existsByListUrl(req.getListUrl())) {
+            throw new RuntimeException("This list URL already exists");
         }
 
         Source s = Source.builder()
-                .tenant(tenant)
                 .category(category)
                 .name(req.getName())
                 .baseUrl(req.getBaseUrl())
@@ -121,7 +99,7 @@ public class SourceServiceImpl implements SourceService {
 
     @Override
     public void delete(Long id) {
-        // có thể đổi isActive = false thay vì xóa
+        // Thay vì xóa hoàn toàn, chỉ đánh dấu không hoạt động
         Source s = sourceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Source not found"));
         s.setIsActive(false);
@@ -134,23 +112,4 @@ public class SourceServiceImpl implements SourceService {
                 .map(SourceMapper::toDto)
                 .toList();
     }
-
-    //bot crawler url
-//    @Override
-//    public String runbot(){
-//        List<Source> sourceList = sourceRepository.findAll();
-//        try{
-//            for(Source s : sourceList){
-//                Document document = Jsoup.connect(s.getBaseUrl()).get();
-//                Element elements = document.select(s.getListUrl()).first();
-//                HashSet<String> links = new HashSet<>();
-//                for(Element element : elements){
-//
-//                }
-//            }
-//        }catch(Exception e){
-//
-//        }
-//        return runbot();
-//    }
 }

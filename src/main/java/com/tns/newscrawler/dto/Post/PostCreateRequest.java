@@ -3,7 +3,6 @@ import lombok.Data;
 
 @Data
 public class PostCreateRequest {
-    private Long tenantId;
     private Long sourceId;
     private Long categoryId;
     private String originUrl;   // bắt buộc

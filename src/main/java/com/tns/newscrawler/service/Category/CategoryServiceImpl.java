@@ -4,11 +4,10 @@ import com.tns.newscrawler.dto.Category.CategoryCreateRequest;
 import com.tns.newscrawler.dto.Category.CategoryDto;
 import com.tns.newscrawler.dto.Category.CategoryUpdateRequest;
 import com.tns.newscrawler.entity.Category;
-import com.tns.newscrawler.entity.Tenant;
 import com.tns.newscrawler.mapper.Category.CategoryMapper;
 import com.tns.newscrawler.repository.CategoryRepository;
-import com.tns.newscrawler.repository.TenantRepository;
-import com.tns.newscrawler.service.Category.CategoryService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,20 +18,15 @@ import java.util.List;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final TenantRepository tenantRepository;
 
-    public CategoryServiceImpl(CategoryRepository categoryRepository,
-                               TenantRepository tenantRepository) {
+    public CategoryServiceImpl(CategoryRepository categoryRepository) {
         this.categoryRepository = categoryRepository;
-        this.tenantRepository = tenantRepository;
     }
 
     @Override
-    public List<CategoryDto> getByTenant(Long tenantId) {
-        return categoryRepository.findByTenant_Id(tenantId)
-                .stream()
-                .map(CategoryMapper::toDto)
-                .toList();
+    public List<CategoryDto> getCategories() {
+        return categoryRepository.findAll()
+                .stream().map(CategoryMapper::toDto).toList();
     }
 
     @Override
@@ -44,8 +38,22 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public List<CategoryDto> getActiveByTenant(Long tenantId) {
-        return categoryRepository.findByTenant_IdAndIsActiveTrue(tenantId)
+    public List<Category> getAllParentCategories() {
+        return categoryRepository.findByParentIdIsNull();
+    }
+    @Override
+    public List<Category> getCategoriesByParentId(Long parentId) {
+        return categoryRepository.findByParentId(parentId);
+    }
+
+    @Override
+    public Long CountCat() {
+        return categoryRepository.CountCat();
+    }
+
+    @Override
+    public List<CategoryDto> getActiveByTenant() {
+        return categoryRepository.findByIsActiveTrue()
                 .stream()
                 .map(CategoryMapper::toDto)
                 .toList();
@@ -58,21 +66,10 @@ public class CategoryServiceImpl implements CategoryService {
         return CategoryMapper.toDto(c);
     }
 
-
     @Override
     public CategoryDto create(CategoryCreateRequest req) {
-        // 1. check tenant
-        Tenant tenant = tenantRepository.findById(req.getTenantId())
-                .orElseThrow(() -> new RuntimeException("Tenant not found"));
-
-        // 2. check code unique trong tenant
-        if (categoryRepository.existsByTenant_IdAndCode(tenant.getId(), req.getCode())) {
-            throw new RuntimeException("Category code already exists in this tenant");
-        }
-
-        // 3. create
+        // 1. create
         Category c = Category.builder()
-                .tenant(tenant)
                 .code(req.getCode())
                 .name(req.getName())
                 .description(req.getDescription())
@@ -97,11 +94,61 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public void delete(Long id) {
-        // tuỳ: xóa hẳn hoặc chuyển inactive
+        // Tuỳ: xóa hẳn hoặc chuyển inactive
         Category c = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
         c.setIsActive(false);
-        // nếu muốn xoá hẳn:
+        // Nếu muốn xoá hẳn:
         // categoryRepository.deleteById(id);
+    }
+
+    @Override
+    public List<CategoryDto> getPublicCategories() {
+        return categoryRepository
+                .findByIsActiveTrueOrderByNameAsc()
+                .stream()
+                .map(CategoryMapper::toDto)
+                .toList();
+    }
+
+    @Override
+    public CategoryDto getCategoryBySlug(String slug) {
+        Category category = categoryRepository
+                .findBySlugAndIsActiveTrue(slug)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+        return CategoryMapper.toDto(category);
+    }
+
+    @Override
+    public Page<CategoryDto> searchAdmin(String keyword, Boolean active, Pageable pageable) {
+        // Anh tự define thêm method trong repo nếu cần search nâng cao.
+        // Tạm thời dùng findAll + filter đơn giản hoặc viết query riêng.
+        throw new UnsupportedOperationException("Implement me");
+    }
+
+    @Override
+    public CategoryDto createCategory(CategoryDto dto) {
+        Category entity = CategoryMapper.toEntity(dto);
+        entity.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : Boolean.TRUE);
+        Category saved = categoryRepository.save(entity);
+        return CategoryMapper.toDto(saved);
+    }
+
+    @Override
+    public CategoryDto updateCategory(Long id, CategoryDto dto) {
+        Category entity = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        CategoryMapper.updateEntity(dto, entity);
+        Category saved = categoryRepository.save(entity);
+        return CategoryMapper.toDto(saved);
+    }
+
+    @Override
+    public void toggleActive(Long id, boolean isActive) {
+        Category entity = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+        entity.setIsActive(isActive);
+        categoryRepository.save(entity);
     }
 }

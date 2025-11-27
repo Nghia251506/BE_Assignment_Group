@@ -5,7 +5,6 @@ import lombok.Data;
 @Data
 public class SourceDto {
     private Long id;
-    private Long tenantId;
     private Long categoryId;
     private String name;
     private String baseUrl;
