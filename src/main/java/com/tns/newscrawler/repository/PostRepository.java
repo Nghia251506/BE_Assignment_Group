@@ -136,6 +136,13 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             Pageable pageable
     );
 
+    @Query("SELECT p FROM Post p WHERE LOWER(p.category.slug) = LOWER(:categorySlug) AND p.status = :status")
+    Page<Post> findByCategorySlugAndStatus(
+            @Param("categorySlug") String categorySlug,
+            @Param("status") PostStatus status,
+            Pageable pageable
+    );
+
     @Query("SELECT p FROM Post p WHERE p.category.id = :categoryId OR p.category.parentId = :parentId")
     List<Post> findByCategoryIdOrParentId(@Param("categoryId") Long categoryId, @Param("parentId") Long parentId);
     @Modifying

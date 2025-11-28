@@ -43,10 +43,19 @@ public class ClientController {
 
     @GetMapping("/posts")
     public Page<PostDto> getAllPosts(
+            @RequestParam(required = false) String categorySlug,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return postService.getLatestPosts(pageable);  // Sử dụng phương thức getLatestPosts thay cho getAllPosts
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "publishedAt,desc") String sort) {  // thêm sort để linh hoạt
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "publishedAt"));
+
+        // ĐÂY LÀ DÒNG CỨU CẢ DỰ ÁN
+        if (categorySlug != null && !categorySlug.trim().isEmpty()) {
+            return postService.getPostsByCategorySlug(categorySlug, pageable);
+        }
+
+        return postService.getLatestPosts(pageable);
     }
 
     @GetMapping("/posts/{slug}")

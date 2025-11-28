@@ -23,7 +23,7 @@ public interface PostService {
     int getArticleCountBySourceId(Long SourceId);
     PostDto getById(Long id);
     Long countPosts();
-
+    Page<PostDto> getPostsByCategorySlug(String categorySlug, Pageable pageable);
     PostDto create(PostCreateRequest req);
 
     PostDto update(Long id, PostUpdateRequest req);

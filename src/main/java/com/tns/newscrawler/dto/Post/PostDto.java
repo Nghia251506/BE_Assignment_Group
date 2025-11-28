@@ -46,5 +46,6 @@ public class PostDto {
     // Các field tiện cho view/list
     private String baseUrl;
     private String categoryName;
+    private String categorySlug;
     private String sourceName;
 }
