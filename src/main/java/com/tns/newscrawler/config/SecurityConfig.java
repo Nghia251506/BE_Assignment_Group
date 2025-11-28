@@ -1,5 +1,6 @@
 package com.tns.newscrawler.config;
 
+import com.tns.newscrawler.security.JwtAuthenticationFilter;
 import com.tns.newscrawler.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -71,8 +72,8 @@ public class SecurityConfig {
 
     // FILTER MỚI – ĐỌC JWT TỪ SESSION
     @Bean
-    public JwtFromSessionFilter jwtFromSessionFilter() {
-        return new JwtFromSessionFilter(jwtTokenProvider);
+    public JwtAuthenticationFilter jwtFromSessionFilter() {
+        return new JwtAuthenticationFilter(jwtTokenProvider);
     }
 
     @Bean

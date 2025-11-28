@@ -20,7 +20,6 @@ public class AppConfig {
     // Spring sẽ tự động tìm và inject CustomUserDetailsService vào đây
     private final UserDetailsService userDetailsService;
     private final SecurityConfig securityConfig;
-    private final SecurityConfig  securityConfig;
 
     // ==============================================================
     // 1. AUTHENTICATION PROVIDER (Cấu hình Logic Xác thực)
