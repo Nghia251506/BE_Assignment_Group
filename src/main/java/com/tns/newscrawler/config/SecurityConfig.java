@@ -1,6 +1,5 @@
 package com.tns.newscrawler.config;
 
-import com.tns.newscrawler.security.JwtFromSessionFilter; // ← TẠO FILE MỚI NÀY
 import com.tns.newscrawler.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

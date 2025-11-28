@@ -1,7 +1,11 @@
 package com.tns.newscrawler.dto.Post;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 @Data
+@Getter
+@Setter
 public class PostSearchRequest {
     private Long categoryId;     // optional
     private Long sourceId;       // optional
