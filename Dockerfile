@@ -1,44 +1,46 @@
-# ========== STAGE 1: Build với Maven (nhẹ + cache cực mạnh) ==========
+# ========== STAGE 1: Build nhanh + cache cực mạnh ==========
 FROM maven:3.9.9-eclipse-temurin-17-alpine AS builder
-
 WORKDIR /app
 
-# Cache dependencies trước (chỉ rebuild khi pom thay đổi)
+# Cache dependencies trước (chỉ rebuild khi pom.xml thay đổi)
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copy source + build (SKIP TEST + KHÔNG DÙNG PROFILE production → fix lỗi profile không tồn tại + lỗi UTF-8)
+# Copy source và build (skip test)
 COPY src ./src
 RUN mvn clean package -DskipTests -B
 
-# ========== STAGE 2: Runtime siêu nhẹ + bảo mật ==========
+# ========== STAGE 2: Runtime siêu nhẹ, tối ưu cho Railway + Redis ==========
 FROM eclipse-temurin:17-jre-alpine
 
+# Metadata
 LABEL maintainer="nghiant"
-LABEL org.opencontainers.image.source="https://github.com/Nghia251506/BE_Assignment_Group.git"
+LABEL org.opencontainers.image.source="https://github.com/Nghia251506/BE_Assignment_Group"
 
-# Tạo non-root user (bảo mật)
+# Tạo user non-root (Railway yêu cầu bảo mật ong)
 RUN addgroup --system spring && adduser --system --ingroup spring spring
-USER spring
+USER spring:spring
 
 WORKDIR /app
 
-# Copy jar từ stage builder (dùng wildcard an toàn)
-COPY --from=builder /app/target/news-crawler-*.jar /app/news-crawler.jar
+# Copy JAR đã build
+COPY --from=builder /app/target/news-crawler-*.jar /app/app.jar
 
-# Tối ưu JVM + fix encoding cho container
-ENV JAVA_OPTS="-XX:+UseContainerSupport \
-               -XX:MaxRAMPercentage=80.0 \
-               -Dfile.encoding=UTF-8 \
-               -Dspring.profiles.active=production"
+# Environment variables chuẩn cho Railway + Redis + MySQL
+ENV JAVA_OPTS="\
+  -XX:+UseContainerSupport \
+  -XX:MaxRAMPercentage=80.0 \
+  -Dfile.encoding=UTF-8 \
+  -Duser.timezone=Asia/Ho_Chi_Minh \
+  -Dspring.profiles.active=production"
 
-# Port linh hoạt (Railway, Render, Docker đều dùng được)
+# Railway sẽ tự inject PORT, Redis, MySQL env → không cần hardcode
 ENV PORT=8080
 EXPOSE ${PORT}
 
-# Health check cho Railway/Render
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+# Healthcheck CHUẨN Railway 2025 (dùng curl có sẵn trong JRE Alpine)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/actuator/health || exit 1
 
-# Chạy app (PORT từ env, fallback 8080)
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/news-crawler.jar --server.port=${PORT}"]
+# Chạy app
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar --server.port=${PORT}"]
