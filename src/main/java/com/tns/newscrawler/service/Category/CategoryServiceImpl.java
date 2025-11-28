@@ -79,7 +79,7 @@ public class CategoryServiceImpl implements CategoryService {
         //         s -> categoryRepository.existsBySlug(s));  // Predicate.test() tự động match
 
         Category category = Category.builder()
-                .parentId()
+                .parentId(req.getParentId())
                 .code(req.getCode())
                 .name(req.getName())
                 .description(req.getDescription())
