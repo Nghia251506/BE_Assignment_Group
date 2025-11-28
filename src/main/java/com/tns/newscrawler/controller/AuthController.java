@@ -68,6 +68,7 @@ public class AuthController {
             cookie.setMaxAge(7 * 24 * 60 * 60); // Cookie tồn tại trong 7 ngày
             cookie.setDomain("admin.muong14.xyz");        // CHỈ gửi cookie cho đúng admin subdomain
             cookie.setAttribute("SameSite", "None");
+            cookie.setAttribute("Partitioned", "true");
             response.addCookie(cookie);
 
             // Lấy thông tin UserDto từ service
