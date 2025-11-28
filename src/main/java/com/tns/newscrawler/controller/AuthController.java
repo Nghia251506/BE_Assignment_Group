@@ -5,9 +5,13 @@ import com.tns.newscrawler.dto.Auth.LoginRequest;
 import com.tns.newscrawler.entity.User;
 import com.tns.newscrawler.service.User.UserServiceImpl;
 import com.tns.newscrawler.security.JwtTokenProvider;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -24,29 +28,36 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserServiceImpl userService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final Environment environment;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         try {
-            // Validate input
+            // Kiểm tra thông tin đăng nhập
             if (loginRequest.getUsername() == null || loginRequest.getPassword() == null) {
                 return ResponseEntity.status(400).body("Tên đăng nhập và mật khẩu không được để trống");
             }
 
-            // Xác thực bằng Spring Security
+            // Thực hiện xác thực người dùng
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
             );
 
+            // Đặt Authentication vào SecurityContext
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            String username = authentication.getName();
-            User userEntity = userService.findByUsername(username);
 
+            // Lấy thông tin username từ authentication
+            String username = authentication.getName();
+
+            // Lấy thông tin User từ database
+            com.tns.newscrawler.entity.User userEntity = userService.findByUsername(username);
+
+            // Kiểm tra nếu không tìm thấy user trong DB
             if (userEntity == null) {
                 return ResponseEntity.status(404).body("User không tồn tại");
             }
 
-            // TẠO JWT NHƯ CŨ
+            // Tạo JWT token cho user đã đăng nhập
             String jwtToken = jwtTokenProvider.generateToken(userEntity);
 
             // Set cookie với JWT token
@@ -59,16 +70,21 @@ public class AuthController {
             cookie.setAttribute("SameSite", "None");
             response.addCookie(cookie);
 
-            // Trả về thông tin user
+            // Lấy thông tin UserDto từ service
             UserDto userDto = userService.getByUsername(username);
+
+            // Trả về UserDto cùng với mã trạng thái 200 OK
             return ResponseEntity.ok(userDto);
 
         } catch (BadCredentialsException e) {
+            // Xử lý khi thông tin đăng nhập sai
             return ResponseEntity.status(401).body("Sai tên đăng nhập hoặc mật khẩu");
         } catch (Exception e) {
+            // Xử lý lỗi chung
             return ResponseEntity.status(500).body("Lỗi hệ thống: " + e.getMessage());
         }
     }
+
 
     @GetMapping("/me")
     public ResponseEntity<UserDto> me(Authentication authentication) {
@@ -80,14 +96,19 @@ public class AuthController {
         return ResponseEntity.status(401).build();
     }
 
+
+
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(HttpServletRequest request) {
-        // XÓA SESSION → JWT TRONG SESSION BIẾN MẤT
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            session.invalidate();
-        }
+    public ResponseEntity<String> logout(HttpServletResponse response) {
         SecurityContextHolder.clearContext();
+
+        Cookie cookie = new Cookie("access_token", null);
+//        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+
         return ResponseEntity.ok("Đăng xuất thành công");
     }
 }
