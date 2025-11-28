@@ -2,45 +2,36 @@
 FROM maven:3.9.9-eclipse-temurin-17-alpine AS builder
 WORKDIR /app
 
-# Cache dependencies trước (chỉ rebuild khi pom.xml thay đổi)
+# Cache dependencies trước (chỉ rebuild khi pom thay đổi)
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copy source và build (skip test)
+# Copy source và build
 COPY src ./src
 RUN mvn clean package -DskipTests -B
 
-# ========== STAGE 2: Runtime siêu nhẹ, tối ưu cho Railway + Redis ==========
+# ========== STAGE 2: Runtime siêu nhẹ, tối ưu Railway 2025 ==========
 FROM eclipse-temurin:17-jre-alpine
 
-# Metadata
-LABEL maintainer="nghiant"
-LABEL org.opencontainers.image.source="https://github.com/Nghia251506/BE_Assignment_Group"
-
-# Tạo user non-root (Railway yêu cầu bảo mật ong)
+# Tạo non-root user (Railway khuyến khích)
 RUN addgroup --system spring && adduser --system --ingroup spring spring
 USER spring:spring
 
 WORKDIR /app
 
-# Copy JAR đã build
-COPY --from=builder /app/target/news-crawler-*.jar /app/app.jar
+# CHÍNH LÀ DÒNG NÀY PHẢI SỬA – copy đúng tên file + đúng đường dẫn
+COPY --from=builder /app/target/news-crawler-*.jar app.jar
+# → Không dùng /app/app.jar ở đây, chỉ dùng app.jar thôi
+# → Vì ENTRYPOINT bên dưới sẽ chạy java -jar app.jar (không có /app/)
 
-# Environment variables chuẩn cho Railway + Redis + MySQL
-ENV JAVA_OPTS="\
-  -XX:+UseContainerSupport \
-  -XX:MaxRAMPercentage=80.0 \
-  -Dfile.encoding=UTF-8 \
-  -Duser.timezone=Asia/Ho_Chi_Minh \
-  -Dspring.profiles.active=production"
-
-# Railway sẽ tự inject PORT, Redis, MySQL env → không cần hardcode
+# Environment chuẩn Railway
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=80.0 -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Ho_Chi_Minh"
 ENV PORT=8080
 EXPOSE ${PORT}
 
-# Healthcheck CHUẨN Railway 2025 (dùng curl có sẵn trong JRE Alpine)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+# Healthcheck nhẹ nhất có thể (Railway yêu cầu)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/actuator/health || exit 1
 
-# Chạy app
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar --server.port=${PORT}"]
+# CHÍNH LÀ DÒNG NÀY PHẢI SỬA – không cần /app/ ở đầu
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar --server.port=${PORT}"]
