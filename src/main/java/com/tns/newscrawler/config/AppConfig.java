@@ -1,6 +1,7 @@
 package com.tns.newscrawler.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,6 +19,7 @@ public class AppConfig {
 
     // Spring sẽ tự động tìm và inject CustomUserDetailsService vào đây
     private final UserDetailsService userDetailsService;
+    private final SecurityConfig securityConfig;
 
     // ==============================================================
     // 1. AUTHENTICATION PROVIDER (Cấu hình Logic Xác thực)
@@ -31,7 +33,7 @@ public class AppConfig {
 
         // Bước B: Chỉ định cách mã hóa mật khẩu (Fix lỗi "id null")
         // Bắt buộc dùng passwordEncoder() định nghĩa bên dưới
-        authProvider.setPasswordEncoder(passwordEncoder());
+        authProvider.setPasswordEncoder(securityConfig.passwordEncoder());
 
         return authProvider;
     }
@@ -39,19 +41,19 @@ public class AppConfig {
     // ==============================================================
     // 2. PASSWORD ENCODER (Mã hóa mật khẩu)
     // ==============================================================
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        // Sử dụng thuật toán BCrypt chuẩn (Không cần prefix {bcrypt})
-        return new BCryptPasswordEncoder();
-    }
-
-    // ==============================================================
-    // 3. AUTHENTICATION MANAGER (Quản lý đăng nhập)
-    // ==============================================================
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
-    }
+//    @Bean
+//    public PasswordEncoder passwordEncoder() {
+//        // Sử dụng thuật toán BCrypt chuẩn (Không cần prefix {bcrypt})
+//        return new BCryptPasswordEncoder();
+//    }
+//
+//    // ==============================================================
+//    // 3. AUTHENTICATION MANAGER (Quản lý đăng nhập)
+//    // ==============================================================
+//    @Bean
+//    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+//        return config.getAuthenticationManager();
+//    }
 
     // ==============================================================
     // 4. MVC HANDLER (Fix lỗi Spring Boot 3)

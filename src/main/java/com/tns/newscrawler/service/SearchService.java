@@ -3,7 +3,7 @@ package com.tns.newscrawler.service;
 import com.google.gson.Gson;
 import com.tns.newscrawler.entity.Post;
 import com.tns.newscrawler.entity.redis.PostDoc;
-import com.tns.newscrawler.repository.jpa.PostRepository;
+import com.tns.newscrawler.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

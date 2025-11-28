@@ -6,6 +6,7 @@ import com.tns.newscrawler.dto.Category.CategoryUpdateRequest;
 import com.tns.newscrawler.entity.Category;
 import com.tns.newscrawler.mapper.Category.CategoryMapper;
 import com.tns.newscrawler.repository.CategoryRepository;
+import com.tns.newscrawler.utils.SlugGenerator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -18,9 +19,11 @@ import java.util.List;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final SlugGenerator slugGenerator;
 
-    public CategoryServiceImpl(CategoryRepository categoryRepository) {
+    public CategoryServiceImpl(CategoryRepository categoryRepository, SlugGenerator slugGenerator) {
         this.categoryRepository = categoryRepository;
+        this.slugGenerator = slugGenerator;
     }
 
     @Override
@@ -62,16 +65,23 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryDto create(CategoryCreateRequest req) {
-        // 1. create
-        Category c = Category.builder()
+        // Đơn giản (không unique)
+        String slug = slugGenerator.make(req.getName());
+
+        // Hoặc unique (khuyến khích, dùng Predicate thay vì Function)
+        // String slug = slugGenerator.makeUnique(req.getName(),
+        //         s -> categoryRepository.existsBySlug(s));  // Predicate.test() tự động match
+
+        Category category = Category.builder()
                 .code(req.getCode())
                 .name(req.getName())
                 .description(req.getDescription())
+                .slug(slug)
                 .isActive(true)
                 .build();
 
-        categoryRepository.save(c);
-        return CategoryMapper.toDto(c);
+        categoryRepository.save(category);
+        return CategoryMapper.toDto(category);
     }
 
     @Override
