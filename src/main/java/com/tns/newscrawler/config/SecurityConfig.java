@@ -43,29 +43,26 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // BẬT SESSION – CHỈ CẦN 2 DÒNG NÀY LÀ ĐỦ
-                .sessionManagement(session -> session
-                                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-                                .maximumSessions(1)
-                        // XÓA DÒNG invalidSessionUrl ĐI → KHÔNG CẦN!
-                )
-
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
-                                "/swagger-resources/**", "/webjars/**"
+                                "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**"
                         ).permitAll()
                         .requestMatchers(
-                                "/", "/article/**", "/category/**", "/api/public/**", "/api/dev/rebuild-redis"
+                                "/", "/article/**", "/category/**", "/api/public/**"
                         ).permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // Sẽ tìm ROLE_ADMIN
                         .anyRequest().authenticated()
                 )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                );
 
-                // DÙNG FILTER MỚI ĐỌC JWT TỪ SESSION
-                .addFilterBefore(jwtFromSessionFilter(), UsernamePasswordAuthenticationFilter.class);
+        // Bỏ customUserDetailsService khỏi constructor vì không cần nữa
+        http.addFilterBefore(
+                new JwtAuthenticationFilter(jwtTokenProvider),
+                UsernamePasswordAuthenticationFilter.class
+        );
 
         return http.build();
     }
