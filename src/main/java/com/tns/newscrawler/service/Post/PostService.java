@@ -16,11 +16,13 @@ public interface PostService {
     // =====================
     // ADMIN / INTERNAL
     // =====================
-
+    void increaseViewCount(Long id);
+    void increaseViewCountBySlug(String slug);
     Page<PostDto> search(PostSearchRequest req);
     int getArticleCountByCategorySlug(String categorySlug);
     int getArticleCountBySourceId(Long SourceId);
     PostDto getById(Long id);
+    Long countPosts();
 
     PostDto create(PostCreateRequest req);
 
@@ -38,7 +40,7 @@ public interface PostService {
 
     PostDto upsertByOrigin(PostCreateRequest req);
 
-    PostDto generatePost(Long id);
+    Post generatePost(Long id);
 
     List<PostDto> getPostsByCategory(Long categoryId, Long parentId);
 
@@ -51,4 +53,7 @@ public interface PostService {
     Page<PostDto> getLatestPosts(Pageable pageable);
 
     Page<PostDto> searchPublic(String keyword, Pageable pageable);
+    List<PostDto> findAllByDesc();
+    void bulkGenerateAndPublish(List<Long> postIds);
+    void bulkPublish(List<Long> postIds);
 }

@@ -1,0 +1,66 @@
+
+spring:
+  application:
+    name: news-crawler
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:news_crawler}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Bangkok&useUnicode=true&characterEncoding=UTF-8
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+server:
+  port: ${PORT:8888}
+
+# Crawler schedule
+crawler:
+  cron: "*/30 * * * * *"
+
+# Swagger UI
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  api-docs:
+    enabled: true
+
+# RabbitMQ
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+rabbit:
+  exchange: news.exchange
+  routing:
+    links: news.links
+
+# JWT
+jwt:
+  secret-key: ${JWT_SECRET_KEY:c0480841-a0ed-42f3-a72b-a3d38b58406e}
+
+# CORS
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+# GA4 CONFIG
+google:
+  project-id: ${GA4_PROJECT_ID}
+  client-email: ${GA4_CLIENT_EMAIL}
+  private-key: ${GA4_PRIVATE_KEY}
+  property-id: ${GA4_PROPERTY_ID}
+  credentials-base64: ${GA4_CREDENTIALS_BASE64:}

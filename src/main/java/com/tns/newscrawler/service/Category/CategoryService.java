@@ -37,4 +37,5 @@ public interface CategoryService {
 
     List<Category> getAllParentCategories();
     List<Category> getCategoriesByParentId(Long parentId);
+    Long CountCat();
 }

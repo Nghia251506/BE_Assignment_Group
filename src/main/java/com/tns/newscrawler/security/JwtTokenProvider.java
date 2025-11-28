@@ -10,6 +10,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -45,8 +46,6 @@ public class JwtTokenProvider {
     // ---- Lấy Authentication từ token ----
     public Authentication getAuthentication(String token) {
         try {
-            System.out.println("--- Parsing JWT Token ---");
-
             Claims claims = Jwts.parser()
                     .verifyWith(key)
                     .build()
@@ -56,30 +55,21 @@ public class JwtTokenProvider {
             String username = claims.getSubject();
             String roleCode = claims.get("roleCode", String.class);
 
-            System.out.println("Username from JWT: " + username);
-            System.out.println("RoleCode from JWT: " + roleCode);
-
-            if (roleCode == null || roleCode.isEmpty()) {
-                System.err.println("WARNING: roleCode is null or empty!");
+            if (username == null || roleCode == null || roleCode.isEmpty()) {
+                System.err.println("JWT missing username or roleCode");
                 return null;
             }
 
-            // Tạo GrantedAuthority từ roleCode
-            GrantedAuthority authority = new SimpleGrantedAuthority(roleCode);
+            // ĐẢM BẢO ROLE CÓ "ROLE_" ĐẦU
+            String authorityName = roleCode.startsWith("ROLE_") ? roleCode : "ROLE_" + roleCode;
+            GrantedAuthority authority = new SimpleGrantedAuthority(authorityName);
             List<GrantedAuthority> authorities = Collections.singletonList(authority);
 
-            System.out.println("Created authority: " + authority.getAuthority());
-            System.out.println("Authorities list: " + authorities);
+            // BỎ HOÀN TOÀN WebAuthenticationDetailsSource() → KHÔNG CẦN REQUEST Ở ĐÂY!
+            return new UsernamePasswordAuthenticationToken(username, null, authorities);
 
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(username, null, authorities);
-
-            System.out.println("Created authentication object");
-            System.out.println("--- End Parsing JWT ---");
-
-            return auth;
         } catch (Exception e) {
-            System.err.println("ERROR parsing JWT: " + e.getMessage());
+            System.err.println("ERROR parsing JWT for authentication: " + e.getMessage());
             e.printStackTrace();
             return null;
         }

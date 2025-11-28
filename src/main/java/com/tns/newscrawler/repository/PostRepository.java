@@ -1,11 +1,12 @@
 package com.tns.newscrawler.repository;
 
+import com.tns.newscrawler.dto.Post.PostDto;
 import com.tns.newscrawler.entity.Post;
 import com.tns.newscrawler.entity.Post.DeleteStatus;
 import com.tns.newscrawler.entity.Post.PostStatus;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -23,6 +24,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Optional<Post> findByOriginUrl(String originUrl);
 
     boolean existsByOriginUrl(String originUrl);
+    @Modifying
+    @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :postId")
+    void incrementViewCount(@Param("postId") Long postId);
+    @Query("SELECT p FROM Post p ORDER BY p.viewCount DESC")
+    List<Post> findTop10ByViewCount(Pageable pageable);
 
     // =====================
     // ADMIN: list full (kèm source/category)
@@ -72,6 +78,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // =====================
     // PUBLIC: latest / by category
     // =====================
+    @Query("SELECT p FROM Post p ORDER BY p.createdAt DESC")
+    List<Post> findAllByDesc();
     Page<Post> findByStatusAndDeleteStatusOrderByPublishedAtDesc(
             PostStatus status,
             DeleteStatus deleteStatus,
@@ -133,4 +141,26 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Modifying
     @Query("DELETE FROM PostTag pt WHERE pt.post.id = :postId")
     void deleteAllTagsByPostId(@Param("postId") Long postId);
+    @Query("SELECT p FROM Post p " +
+            "LEFT JOIN FETCH p.source " +
+            "LEFT JOIN FETCH p.category " +
+            "WHERE p.deleteStatus = 'Active' " +
+            "ORDER BY p.createdAt DESC")
+    List<Post> findTop5Recent(Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE Post p SET p.status = :status WHERE p.id IN :ids AND p.deleteStatus = 'Active'")
+    void updateStatusByIds(@Param("ids") List<Long> ids, @Param("status") PostStatus status, DeleteStatus deleteStatus);
+
+    // DEFAULT METHOD – SIÊU TIỆN, KHÔNG CẦN GỌI PageRequest.of MỖI LẦN
+    default List<Post> getTop5Recent() {
+        return findTop5Recent(PageRequest.of(0, 5));
+    }
+
+    //count
+    @Query("SELECT COUNT(p) FROM Post p WHERE p.deleteStatus = 'Active'")
+    Long CountPosts();
+
+    @Query("SELECT p FROM Post p WHERE p.deleteStatus = 'Active' ORDER BY p.createdAt DESC")
+    Page<Post> findAllActivePublished(Pageable pageable);
 }

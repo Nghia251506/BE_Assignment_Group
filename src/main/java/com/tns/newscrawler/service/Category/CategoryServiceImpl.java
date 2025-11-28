@@ -39,6 +39,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .map(CategoryMapper::toDto)
                 .toList();
     }
+
     @Override
     public List<Category> getAllParentCategories() {
         return categoryRepository.findByParentIdIsNull();
@@ -46,6 +47,11 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public List<Category> getCategoriesByParentId(Long parentId) {
         return categoryRepository.findByParentId(parentId);
+    }
+
+    @Override
+    public Long CountCat() {
+        return categoryRepository.CountCat();
     }
 
     @Override
