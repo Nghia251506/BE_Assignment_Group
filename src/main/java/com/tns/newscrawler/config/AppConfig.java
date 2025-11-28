@@ -1,6 +1,7 @@
 package com.tns.newscrawler.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,6 +19,7 @@ public class AppConfig {
 
     // Spring sẽ tự động tìm và inject CustomUserDetailsService vào đây
     private final UserDetailsService userDetailsService;
+    private final SecurityConfig securityConfig;
     private final SecurityConfig  securityConfig;
 
     // ==============================================================
@@ -45,6 +47,10 @@ public class AppConfig {
 //        // Sử dụng thuật toán BCrypt chuẩn (Không cần prefix {bcrypt})
 //        return new BCryptPasswordEncoder();
 //    }
+//
+//    // ==============================================================
+//    // 3. AUTHENTICATION MANAGER (Quản lý đăng nhập)
+//    // ==============================================================
 
     // ==============================================================
     // 3. AUTHENTICATION MANAGER (Quản lý đăng nhập)

@@ -49,10 +49,15 @@ public class AuthController {
             // TẠO JWT NHƯ CŨ
             String jwtToken = jwtTokenProvider.generateToken(userEntity);
 
-            // NHƯNG KHÔNG SET COOKIE NỮA → LƯU JWT VÀO SESSION (SERVER-SIDE)
-            HttpSession session = request.getSession(true);
-            session.setAttribute("jwt_token", jwtToken);
-            session.setMaxInactiveInterval(7 * 24 * 60 * 60); // 7 ngày
+            // Set cookie với JWT token
+            Cookie cookie = new Cookie("access_token", jwtToken);
+            cookie.setHttpOnly(true); // Cấm javascript truy cập cookie
+            cookie.setSecure(true); // Chỉ gửi cookie qua HTTPS
+            cookie.setPath("/"); // Cookie có hiệu lực trên toàn bộ ứng dụng
+            cookie.setMaxAge(7 * 24 * 60 * 60); // Cookie tồn tại trong 7 ngày
+            cookie.setDomain("admin.muong14.xyz");        // CHỈ gửi cookie cho đúng admin subdomain
+            cookie.setAttribute("SameSite", "None");
+            response.addCookie(cookie);
 
             // Trả về thông tin user
             UserDto userDto = userService.getByUsername(username);
