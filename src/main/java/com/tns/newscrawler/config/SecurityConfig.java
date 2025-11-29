@@ -77,9 +77,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(List.of(
-                "http://localhost:*",
                 "https://admin.muong14.xyz",
-                "https://muong14.xyz"
+                "https://muong14.xyz",
+                "http://localhost:5173",         // dev vite
+                "http://localhost:3000"          // nếu có
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
