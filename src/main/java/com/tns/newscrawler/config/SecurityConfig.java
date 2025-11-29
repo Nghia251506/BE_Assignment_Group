@@ -48,7 +48,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**"
                         ).permitAll()
                         .requestMatchers(
-                                "/", "/article/**", "/category/**", "/api/public/**"
+                                "/", "/article/**", "/category/**", "/api/public/**","/dev/rebuild-redis"
                         ).permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN") // Sẽ tìm ROLE_ADMIN

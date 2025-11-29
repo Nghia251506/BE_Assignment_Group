@@ -22,20 +22,16 @@ spring:
   # ==================== REDIS CONFIG (ĐÃ THÊM) ====================
   data:
     redis:
-      host: ${REDIS_HOST:localhost}          # Biến môi trường hoặc mặc định localhost
-      port: ${REDIS_PORT:6379}               # Mặc định 6379
-      password: ${REDIS_PASSWORD:}           # Để trống nếu Redis không có mật khẩu
-      database: 0                            # Redis database index (thường dùng 0)
-      timeout: 2000ms                        # Operation timeout
-      connect-timeout: 2000ms                # Connection timeout
-
-      lettuce:
+      url: ${REDIS_URL:redis://default:OQSMeeBbjrYWPSUiLbbcuAZWYOlFSzNP@trolley.proxy.rlwy.net:24251}  # Railway sẽ inject REDIS_URL, local fallback
+      # BỎ HẾT host/port/password/username/database ở đây – để Jedis Bean xử lý
+      jedis: # Chuyển sang Jedis client
         pool:
           enabled: true
-          max-active: 16
-          max-idle: 16
-          min-idle: 8
-          max-wait: 2000ms
+          max-active: 8      # Giữ thấp cho free tier (tránh socket drop)
+          max-idle: 4
+          min-idle: 0
+          max-wait: 5000ms
+          time-between-eviction-runs: 30000ms  # Cleanup idle connections
 
 server:
   port: ${PORT:8888}

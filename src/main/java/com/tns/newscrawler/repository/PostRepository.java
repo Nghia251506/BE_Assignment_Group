@@ -22,6 +22,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // ORIGIN URL (crawler)
     // =====================
     Optional<Post> findByOriginUrl(String originUrl);
+    //search redis
+    @Query("SELECT p FROM Post p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.source")
+    List<Post> findAllWithCategoryAndSource();
 
     boolean existsByOriginUrl(String originUrl);
     @Modifying
