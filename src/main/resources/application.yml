@@ -19,6 +19,24 @@ spring:
         format_sql: true
     open-in-view: false
 
+  # ==================== REDIS CONFIG (ĐÃ THÊM) ====================
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}          # Biến môi trường hoặc mặc định localhost
+      port: ${REDIS_PORT:6379}               # Mặc định 6379
+      password: ${REDIS_PASSWORD:}           # Để trống nếu Redis không có mật khẩu
+      database: 0                            # Redis database index (thường dùng 0)
+      timeout: 2000ms                        # Operation timeout
+      connect-timeout: 2000ms                # Connection timeout
+
+      lettuce:
+        pool:
+          enabled: true
+          max-active: 16
+          max-idle: 16
+          min-idle: 8
+          max-wait: 2000ms
+
 server:
   port: ${PORT:8888}
 
