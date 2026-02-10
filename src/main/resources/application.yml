@@ -34,7 +34,7 @@ spring:
           time-between-eviction-runs: 30000ms  # Cleanup idle connections
 
 server:
-  port: ${PORT:8888}
+  port: ${PORT:8080}
 
 # Crawler schedule
 crawler:
