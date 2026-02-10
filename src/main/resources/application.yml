@@ -22,7 +22,7 @@ spring:
   # ==================== REDIS CONFIG (ĐÃ THÊM) ====================
   data:
     redis:
-      url: ${REDIS_URL:redis-16809.c252.ap-southeast-1-1.ec2.cloud.redislabs.com:16809}  # Railway sẽ inject REDIS_URL, local fallback
+      url: ${REDIS_URL:redis://default:zDxJkro1V2Rv9JnSwSfus5itkL2DCAQf@redis-16809.c252.ap-southeast-1-1.ec2.cloud.redislabs.com:16809}  # Railway sẽ inject REDIS_URL, local fallback
       # BỎ HẾT host/port/password/username/database ở đây – để Jedis Bean xử lý
       jedis: # Chuyển sang Jedis client
         pool:
