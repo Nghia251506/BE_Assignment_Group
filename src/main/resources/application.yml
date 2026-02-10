@@ -4,9 +4,9 @@ spring:
     name: news-crawler
 
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:news_crawler}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Bangkok&useUnicode=true&characterEncoding=UTF-8
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:}
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME:news_crawler}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Bangkok&useUnicode=true&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -22,7 +22,7 @@ spring:
   # ==================== REDIS CONFIG (ĐÃ THÊM) ====================
   data:
     redis:
-      url: ${REDIS_URL:redis://default:OQSMeeBbjrYWPSUiLbbcuAZWYOlFSzNP@trolley.proxy.rlwy.net:24251}  # Railway sẽ inject REDIS_URL, local fallback
+      url: ${REDIS_URL:redis-16809.c252.ap-southeast-1-1.ec2.cloud.redislabs.com:16809}  # Railway sẽ inject REDIS_URL, local fallback
       # BỎ HẾT host/port/password/username/database ở đây – để Jedis Bean xử lý
       jedis: # Chuyển sang Jedis client
         pool:
