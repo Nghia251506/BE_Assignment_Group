@@ -22,6 +22,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // ORIGIN URL (crawler)
     // =====================
     Optional<Post> findByOriginUrl(String originUrl);
+    //search redis
+    @Query("SELECT p FROM Post p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.source")
+    List<Post> findAllWithCategoryAndSource();
 
     boolean existsByOriginUrl(String originUrl);
     @Modifying
@@ -136,6 +139,13 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             Pageable pageable
     );
 
+    @Query("SELECT p FROM Post p WHERE LOWER(p.category.slug) = LOWER(:categorySlug) AND p.status = :status")
+    Page<Post> findByCategorySlugAndStatus(
+            @Param("categorySlug") String categorySlug,
+            @Param("status") PostStatus status,
+            Pageable pageable
+    );
+
     @Query("SELECT p FROM Post p WHERE p.category.id = :categoryId OR p.category.parentId = :parentId")
     List<Post> findByCategoryIdOrParentId(@Param("categoryId") Long categoryId, @Param("parentId") Long parentId);
     @Modifying
@@ -149,8 +159,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findTop5Recent(Pageable pageable);
 
     @Modifying
-    @Query("UPDATE Post p SET p.status = :status WHERE p.id IN :ids AND p.deleteStatus = 'Active'")
-    void updateStatusByIds(@Param("ids") List<Long> ids, @Param("status") PostStatus status, DeleteStatus deleteStatus);
+    @Query("UPDATE Post p SET p.status = :status " +
+            "WHERE p.id IN :ids AND p.deleteStatus = :deleteStatus")
+    void updateStatusByIds(@Param("ids") List<Long> ids,
+                           @Param("status") Post.PostStatus status,
+                           @Param("deleteStatus") Post.DeleteStatus deleteStatus);
 
     // DEFAULT METHOD – SIÊU TIỆN, KHÔNG CẦN GỌI PageRequest.of MỖI LẦN
     default List<Post> getTop5Recent() {

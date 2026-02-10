@@ -52,6 +52,14 @@ public class PostServiceImpl implements PostService {
         return page.map(PostMapper::toDto);
     }
 
+    public Page<PostDto> getPostsByCategorySlug(String categorySlug, Pageable pageable) {
+        return postRepo.findByCategorySlugAndStatus(
+                categorySlug.toLowerCase(),
+                PostStatus.published,
+                pageable
+        ).map(PostMapper::toDto);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Page<PostDto> searchPublic(String keyword, Pageable pageable) {

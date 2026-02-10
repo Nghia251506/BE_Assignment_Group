@@ -6,7 +6,9 @@ import com.tns.newscrawler.entity.User;
 import com.tns.newscrawler.service.User.UserServiceImpl;
 import com.tns.newscrawler.security.JwtTokenProvider;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
@@ -60,10 +62,13 @@ public class AuthController {
 
             // Set cookie với JWT token
             Cookie cookie = new Cookie("access_token", jwtToken);
-//            cookie.setHttpOnly(true); // Cấm javascript truy cập cookie
+            cookie.setHttpOnly(true); // Cấm javascript truy cập cookie
             cookie.setSecure(true); // Chỉ gửi cookie qua HTTPS
             cookie.setPath("/"); // Cookie có hiệu lực trên toàn bộ ứng dụng
             cookie.setMaxAge(7 * 24 * 60 * 60); // Cookie tồn tại trong 7 ngày
+//            cookie.setDomain(".muong14.xyz");        // CHỈ gửi cookie cho đúng admin subdomain
+            cookie.setAttribute("SameSite", "None");
+            cookie.setAttribute("Partitioned", "true");
             response.addCookie(cookie);
 
             // Lấy thông tin UserDto từ service

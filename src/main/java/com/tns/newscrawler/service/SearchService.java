@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import redis.clients.jedis.JedisPooled;
+import redis.clients.jedis.PipelineBase;
 import redis.clients.jedis.exceptions.JedisDataException;
 import redis.clients.jedis.search.*;
 
@@ -149,25 +150,73 @@ public class SearchService {
 
     // Rebuild toàn bộ – gọi khi cần
     public void syncAllData() {
-        log.info("Bắt đầu rebuild Redis Search...");
+        log.info("Bắt đầu rebuild – Railway Free Tier Mode");
         dropIndex();
         createIndexIfNotExists();
 
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException ignored) {}
+        List<Post> posts = postRepository.findAllWithCategoryAndSource();
+        log.info("Sync {} bài với batch nhỏ + sleep dài", posts.size());
 
-        List<Post> posts = postRepository.findAll();
-        log.info("Đang sync {} bài viết...", posts.size());
+        final int batchSize = 5;  // Siêu nhỏ để tránh socket drop
+        for (int i = 0; i < posts.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, posts.size());
+            List<Post> batch = posts.subList(i, end);
 
-        int count = 0;
-        for (Post post : posts) {
-            syncPostToRedis(post);
-            if (++count % 50 == 0) {
-                log.info("Đã sync {}/{}", count, posts.size());
+            boolean batchSuccess = false;
+            int retry = 0;
+            while (!batchSuccess && retry < 3) {
+                try (var pipeline = jedis.pipelined()) {
+                    for (Post post : batch) {
+                        PostDoc doc = buildPostDoc(post);
+                        String key = PREFIX + post.getId();
+                        String json = gson.toJson(doc);
+
+                        Map<String, String> fields = Map.of(
+                                "title", doc.getTitle(),
+                                "summary", doc.getSummary(),
+                                "thumbnail", doc.getThumbnail() != null ? doc.getThumbnail() : "",
+                                "slug", doc.getSlug() != null ? doc.getSlug() : "",
+                                "categoryName", doc.getCategoryName(),
+                                "sourceName", doc.getSourceName(),
+                                "publishedAt", String.valueOf(doc.getPublishedAt())
+                        );
+
+                        pipeline.del(key);
+                        pipeline.hset(key, fields);
+                        pipeline.hset(key, "jsonPayload", json);
+                    }
+                    pipeline.sync();
+                    batchSuccess = true;
+                    log.info("Batch {}–{} OK (lần {})", i + 1, end, retry + 1);
+                } catch (Exception e) {
+                    retry++;
+                    log.warn("Batch {}–{} fail lần {}: {}. Ngủ 5s retry", i + 1, end, retry, e.getMessage());
+                    try { Thread.sleep(5000 * retry); } catch (InterruptedException ignored) {}
+                }
             }
-        }
 
-        log.info("HOÀN TẤT! Đã đồng bộ {} bài vào Redis Search", posts.size());
+            if (!batchSuccess) {
+                log.error("Bỏ batch {}–{}", i + 1, end);
+            }
+
+            // Sleep dài giữa batch – sweet spot cho Railway free
+            try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+        }
+        log.info("HOÀN TẤT! Kiểm tra: jedis.ftInfo('post-idx').getNumDocs()");
+    }
+
+    private PostDoc buildPostDoc(Post post) {
+        PostDoc doc = new PostDoc();
+        doc.setId(String.valueOf(post.getId()));
+        doc.setTitle(post.getTitle() != null ? post.getTitle() : "");
+        doc.setSummary(post.getSummary() != null ? post.getSummary() : "");
+        doc.setThumbnail(post.getThumbnail());
+        doc.setSlug(post.getSlug());
+        doc.setCategoryName(post.getCategory() != null ? post.getCategory().getName() : "");
+        doc.setSourceName(post.getSource() != null ? post.getSource().getName() : "");
+        doc.setPublishedAt(post.getPublishedAt() != null
+                ? post.getPublishedAt().toEpochSecond(ZoneOffset.UTC)
+                : System.currentTimeMillis() / 1000);
+        return doc;
     }
 }

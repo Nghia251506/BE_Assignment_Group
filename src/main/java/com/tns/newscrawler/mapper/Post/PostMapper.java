@@ -15,6 +15,7 @@ public class PostMapper {
         // liên kết
         d.setSourceId(p.getSource() != null ? p.getSource().getId() : null);
         d.setCategoryId(p.getCategory() != null ? p.getCategory().getId() : null);
+        d.setCategorySlug(p.getCategory() != null ? p.getCategory().getSlug() : null);
 
         // URL
         d.setOriginUrl(p.getOriginUrl());
